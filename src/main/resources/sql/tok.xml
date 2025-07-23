@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sql>
+    <select id="TK_M_YOTEKUKIN_YOTEI">
+        SELECT * FROM TK_M_YOTEKUKIN_YOTEI
+    </select>
+    <select id="findUserById">
+        SELECT * FROM users WHERE id = ?
+    </select>
+    <select id="CALC_YOTAKUKIN">
+        SELECT * FROM users WHERE id = ?
+    </select>
+</sql>
