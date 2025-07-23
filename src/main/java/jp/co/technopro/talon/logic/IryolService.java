@@ -6,10 +6,10 @@ import java.util.Map;
 
 public class IryolService implements ExecutableLogic {
 
-    public void run(Connection conn, Map<String, Object> params, String eventId) {
+    public Map<String, Object> run(Connection conn, Map<String, Object> params, String eventId) {
 
 
-
+        return params;
     }
 
 

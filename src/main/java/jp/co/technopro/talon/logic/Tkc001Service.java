@@ -7,39 +7,40 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.*;
 
+import static jp.co.technopro.talon.consts.EventId.SIMEDATA;
+import static jp.co.technopro.talon.consts.ParamKey.MAP_KEY_SHORI_TUKI;
+import static jp.co.technopro.talon.util.LogicUtil.buildResult;
+
 public class Tkc001Service implements ExecutableLogic {
 
     @Override
-    public void run(Connection conn, Map<String, Object> params, String eventId) {
-        switch (eventId) {
-            case "SIMEDATA":
-                setSimeData(conn, params);
-                break;
-            default:
-                break;
+    public Map<String, Object> run(Connection conn, Map<String, Object> params, String eventId) {
+        try {
+            switch (eventId) {
+                case SIMEDATA:
+                    return setSimeData(conn, params);
+                default:
+                    return buildResult(false, "未対応のイベントID: " + eventId);
+            }
+        } catch (Exception e) {
+            return buildResult(false, "処理中にエラーが発生しました: " + e.getMessage());
         }
     }
 
-    private void setSimeData(Connection conn, Map<String, Object> params) {
-        String shoriTuki = (String) params.get("SHORI_TUKI");
+    private Map<String, Object> setSimeData(Connection conn, Map<String, Object> params) throws SQLException {
+        String shoriTuki = (String) params.get(MAP_KEY_SHORI_TUKI);
 
+        conn.setAutoCommit(false);
         try {
-            conn.setAutoCommit(false);
-
             if (isTkc001Empty(conn, shoriTuki)) {
                 List<Map<String, Object>> hanyouCodeList = fetchHanyouCodes(conn, "TK_DVS");
                 insertSimeData(conn, shoriTuki, hanyouCodeList);
             }
-
             conn.commit();
-
+            return buildResult(true, "締データの登録が完了しました");
         } catch (Exception e) {
-            try {
-                conn.rollback();
-            } catch (Exception rollbackEx) {
-                // rollback失敗時はログだけ出す想定も可
-            }
-            throw new RuntimeException("TKC001 insert error", e);
+            conn.rollback();
+            throw new SQLException("TKC001 insert error", e);
         }
     }
 
@@ -68,4 +69,5 @@ public class Tkc001Service implements ExecutableLogic {
                     Dialect.SQLSERVER);
         }
     }
+
 }

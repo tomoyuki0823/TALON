@@ -10,8 +10,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 
+import static jp.co.technopro.talon.consts.EventId.*;
+import static jp.co.technopro.talon.consts.ParamKey.*;
+import static jp.co.technopro.talon.consts.TableName.TABLE_TK_YOTAKU;
 import static jp.co.technopro.talon.util.DbUtil.*;
 import static jp.co.technopro.talon.util.GojoUtil.*;
+import static jp.co.technopro.talon.util.LogicUtil.buildResult;
 import static jp.co.technopro.talon.util.StringUtil.isNullOrEmpty;
 
 
@@ -19,30 +23,35 @@ public class YotakuService implements ExecutableLogic {
 
     private final SqlLoader sqlLoader = new SqlLoader("sql/yotaku-sql.xml");
 
-    public void run(Connection conn, Map<String, Object> params, String eventId) throws SQLException {
-        switch (eventId) {
+    @Override
+    public Map<String, Object> run(Connection conn, Map<String, Object> params, String eventId) throws SQLException {
+        try {
+            switch (eventId) {
+                case YOTAKU_YOTEI:
+                    setYotakukinYotei(conn, params);
+                    return buildResult(true, "与託金予定を登録しました");
 
-            case "YOTAKU_YOTEI":
-                setYotakukinYotei(conn, params);
-                break;
-            case "INIT_INFO":
-                setYotakuInit(conn, params);
-                break;
-            case "CALC_YOTAKUKIN":
-                calcYotakukin(conn, params);
-                break;
-            default:
-                throw new IllegalStateException("Unexpected value: " + eventId);
+                case INIT_INFO:
+                    setYotakuInit(conn, params);
+                    return buildResult(true, "初期情報の登録が完了しました");
+
+                case CALC_YOTAKUKIN:
+                    calcYotakukin(conn, params);
+                    return buildResult(true, "与託金額の計算が完了しました");
+
+                default:
+                    return buildResult(false, "未対応のイベントID: " + eventId);
+            }
+        } catch (Exception e) {
+            return buildResult(false, "処理中にエラーが発生しました: " + e.getMessage());
         }
-
-
     }
 
     private void calcYotakukin(Connection conn, Map<String, Object> paramMap) throws SQLException {
 
-        String tkNo = (String) paramMap.get("TK_NO");
-        String honCd = (String) paramMap.get("HON_TAISYOKU_CD");
-        String haiCd = (String) paramMap.get("HAI_TAISYOKU_CD");
+        String tkNo = (String) paramMap.get(MAP_KEY_TK_NO);
+        String honCd = (String) paramMap.get(MAP_KEY_HON_TAISYOKU_CD);
+        String haiCd = (String) paramMap.get(MAP_KEY_HAI_TAISYOKU_CD);
 
         // ① 預託金予定取得
         String selectSql = sqlLoader.get("CALC_YOTAKUKIN");
@@ -335,11 +344,11 @@ public class YotakuService implements ExecutableLogic {
     public void insTkYotaku(Connection conn, String tk_no, String shoriTuki) throws SQLException {
 
         Map<String, Object> insMap = new HashMap<>();
-        insMap.put("TK_NO", tk_no);
-        insMap.put("SHORI_TUKI", shoriTuki);
+        insMap.put(MAP_KEY_TK_NO, tk_no);
+        insMap.put(MAP_KEY_SHORI_TUKI, shoriTuki);
 
-        DbUtil.insertByMap(conn, "TK_YOTAKU", insMap,
-                Arrays.asList("TK_NO", "SHORI_TUKI"),
+        DbUtil.insertByMap(conn, TABLE_TK_YOTAKU, insMap,
+                Arrays.asList(MAP_KEY_TK_NO, MAP_KEY_SHORI_TUKI),
                 DbUtil.Dialect.SQLSERVER);
 
     }

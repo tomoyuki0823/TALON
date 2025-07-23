@@ -1,8 +1,9 @@
 
 package jp.co.technopro.talon.util;
 
-import jp.co.technopro.talon.db.DbConfig;
 import jp.co.technopro.talon.db.DbConfigLoader;
+import jp.co.technopro.talon.util.db.DbDialect;
+import jp.co.technopro.talon.util.db.DbDialectFactory;
 
 import java.sql.*;
 import java.util.*;
@@ -205,7 +206,7 @@ public class DbUtil {
                 .orElse(true);
     }
 
-    public static List<String> getInsertableColList(Connection conn, String tableName, Map<String, Object> valueMap) throws SQLException {
+    public static List<String> gettableColList(Connection conn, String tableName, Map<String, Object> valueMap) throws SQLException {
         List<String> availableCols = new ArrayList<>();
         String sql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = ? AND TABLE_SCHEMA = 'dbo'";
 
@@ -223,26 +224,59 @@ public class DbUtil {
         return availableCols;
     }
 
+
     public static int insertByMapAutoCols(Connection conn, String tableName, Map<String, Object> valueMap, DbUtil.Dialect dialect) throws SQLException {
-        List<String> colList = new ArrayList<>();
 
-        String sql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = ? AND TABLE_SCHEMA = 'dbo'";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, tableName);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    String colName = rs.getString("COLUMN_NAME");
-                    if (valueMap.containsKey(colName)) {
-                        colList.add(colName);
-                    }
-                }
-            }
-        }
-
+        List<String> colList = gettableColList(conn, tableName, valueMap);
         return DbUtil.insertByMap(conn, tableName, valueMap, colList, dialect);
     }
 
+    public static void insertByMapEx(Connection conn, String tableName, Map<String, Object> valueMap, boolean includeNulls) throws SQLException {
+        DbDialect dialect = DbDialectFactory.createDialect(conn);
+        List<String> columns = dialect.getTableColumns(conn, tableName, valueMap);
 
+        List<String> insertCols = new ArrayList<>();
+        List<Object> params = new ArrayList<>();
+        for (String col : columns) {
+            Object val = valueMap.get(col);
+            if (val != null || includeNulls) {
+                insertCols.add(col);
+                params.add(val);
+            }
+        }
 
+        String sql = String.format(
+                "INSERT INTO %s (%s) VALUES (%s)",
+                tableName,
+                String.join(", ", insertCols),
+                insertCols.stream().map(c -> "?").collect(Collectors.joining(", "))
+        );
 
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
+            ps.executeUpdate();
+        }
+    }
+
+    public static Map<String, Object> selectOne(Connection conn, String sql, Object... params) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            for (int i = 0; i < params.length; i++) {
+                ps.setObject(i + 1, params[i]);
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    ResultSetMetaData meta = rs.getMetaData();
+                    Map<String, Object> result = new HashMap<>();
+                    for (int i = 1; i <= meta.getColumnCount(); i++) {
+                        result.put(meta.getColumnLabel(i), rs.getObject(i));
+                    }
+                    return result;
+                }
+            }
+        }
+        return null;
+    }
 }
