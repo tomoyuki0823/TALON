@@ -29,6 +29,9 @@ public final class TableName {
     /** 締めデータ管理テーブル（TKC001） */
     public static final String TABLE_TKC001 = "TKC001";
 
-    /** 新規加入（現職）テーブル */
+    /** 新規加入テーブル */
     public static final String TABLE_TK_SHINKI = "TK_SHINKI";
+
+    /** 新規加入（現職）テーブル */
+    public static final String TABLE_GEN_T_KAIIN = "GEN_T_KAIIN";
 }

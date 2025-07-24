@@ -181,30 +181,39 @@ public class DbUtil {
      * <pre>{@code
      * Map<String, Object> whereMap = Map.of(
      *     "SHORI_TUKI", "202507",
-     *     "TK_DVS", "A01"
+     *     "TK_DVS", null  // IS NULL も可能
      * );
      * boolean isEmpty = isTableEmpty(conn, "TKC001", whereMap);
      * }</pre>
      *
      * @param conn      データベース接続（JDBC Connection）
      * @param tableName 対象のテーブル名（例: "TKC001"）
-     * @param whereMap  WHERE条件を表すマップ（キー：カラム名、値：バインド値）
+     * @param whereMap  WHERE条件を表すマップ（キー：カラム名、値：バインド値。nullの場合は IS NULL になる）
      * @return レコードが存在しなければ {@code true}、存在すれば {@code false}
-     * @throws RuntimeException SQLの実行またはデータ取得に失敗した場合
+     * @throws SQLException SQLの実行またはデータ取得に失敗した場合
      */
     public static boolean isTableEmpty(Connection conn, String tableName, Map<String, Object> whereMap) throws SQLException {
-        String whereClause = String.join(" AND ",
-                whereMap.keySet().stream()
-                        .map(col -> col + " = ?")
-                        .collect(Collectors.toList()));
+        List<String> whereClauseList = new ArrayList<>();
+        List<Object> paramList = new ArrayList<>();
 
+        for (Map.Entry<String, Object> entry : whereMap.entrySet()) {
+            if (entry.getValue() == null) {
+                whereClauseList.add(entry.getKey() + " IS NULL");
+            } else {
+                whereClauseList.add(entry.getKey() + " = ?");
+                paramList.add(entry.getValue());
+            }
+        }
+
+        String whereClause = String.join(" AND ", whereClauseList);
         String sql = String.format("SELECT COUNT(*) AS cnt FROM %s WHERE %s", tableName, whereClause);
 
-        return DbUtil.select(conn, sql, whereMap.values().toArray())
+        return DbUtil.select(conn, sql, paramList.toArray())
                 .stream().findFirst()
                 .map(row -> ((Number) row.get("cnt")).intValue() == 0)
                 .orElse(true);
     }
+
 
     public static List<String> gettableColList(Connection conn, String tableName, Map<String, Object> valueMap) throws SQLException {
         List<String> availableCols = new ArrayList<>();
@@ -279,4 +288,57 @@ public class DbUtil {
         }
         return null;
     }
+
+    /**
+     * 任意のテーブルに対して、指定された WHERE 条件で SELECT を実行し、
+     * 結果をリスト形式で返します。
+     *
+     * @param conn      DBコネクション
+     * @param tableName テーブル名（例: "TK_MEMBER"）
+     * @param whereMap  WHERE条件（カラム名をキー、値をバインド対象。null指定で IS NULL）
+     * @return 行データのリスト（カラム名→値の Map）。該当がなければ空リスト。
+     * @throws SQLException SQL実行時の例外
+     */
+    public static List<Map<String, Object>> selectList(Connection conn, String tableName, Map<String, Object> whereMap) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT * FROM " + tableName);
+        List<Object> paramList = new ArrayList<>();
+
+        if (whereMap != null && !whereMap.isEmpty()) {
+            sql.append(" WHERE ");
+            List<String> conditions = new ArrayList<>();
+
+            for (Map.Entry<String, Object> entry : whereMap.entrySet()) {
+                if (entry.getValue() == null) {
+                    conditions.add(entry.getKey() + " IS NULL");
+                } else {
+                    conditions.add(entry.getKey() + " = ?");
+                    paramList.add(entry.getValue());
+                }
+            }
+            sql.append(String.join(" AND ", conditions));
+        }
+
+        try (PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < paramList.size(); i++) {
+                ps.setObject(i + 1, paramList.get(i));
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                List<Map<String, Object>> result = new ArrayList<>();
+                ResultSetMetaData meta = rs.getMetaData();
+                int columnCount = meta.getColumnCount();
+
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    for (int i = 1; i <= columnCount; i++) {
+                        row.put(meta.getColumnLabel(i), rs.getObject(i));
+                    }
+                    result.add(row);
+                }
+
+                return result;
+            }
+        }
+    }
+
 }

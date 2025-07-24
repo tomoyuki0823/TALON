@@ -25,4 +25,7 @@ public final class EventId {
 
     /** 現職重複チェック（TK_SHINKI） */
     public static final String DUPLICATE_GENSHOKU_CHK = "DUPLICATE_GENSYOKU_CHK";
+
+    /** 現職重複チェック（TK_SHINKI） */
+    public static final String SHINKI_HON_TOUROKU = "SHINKI_HON_TOUROKU";
 }

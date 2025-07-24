@@ -11,4 +11,4 @@ params.put("no", 170004);  // ← 追加
 
 var service = new ShinkiService();
 var conn = DbTestUtil.getTestConnection();
-service.run(conn, params, "DUPLICATE_GENSYOKU_CHK");
+service.run(conn, params, "GENSYOKU_CHK");
