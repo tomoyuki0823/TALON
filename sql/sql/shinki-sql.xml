@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sql>
+    <select id="CALC_YOTAKUKIN">
+        SELECT
+        TK_T.TK_NO
+        , CONVERT(int, TK_T.PTN_CD) AS PTN_CD
+        , M.HON_BIKO
+        , M.HON_TAIKAI_CD
+        , M.HAI_BIKO
+        , M.HAI_TAIKAI_CD
+        , M.BIKO
+        , TK_T.HON_YOTAKUKIN_KINGAKU
+        , TK_T.HAI_YOTAKUKIN_KINGAKU
+        , TK_T.HON_TYOIKIN_KINGAKU
+        , TK_T.HAI_TYOIKIN_KINGAKU
+        FROM
+        TK_T_YOTEKUKIN_YOTEI TK_T
+        LEFT OUTER JOIN
+        TK_M_YOTEKUKIN_YOTEI M
+        ON TK_T.PTN_CD = M.PTN_CD
+        WHERE
+        TK_T.TK_NO = ?
+        AND M.HON_TAIKAI_CD IN (?, 'XX')
+        AND M.HAI_TAIKAI_CD IN (?, 'XX')
+    </select>
+
+    <select id="UPDATE_YOTAKU">
+        UPDATE TK_YOTAKU
+        SET
+        HON_SHIHARAI_YOTAKUKIN = ?
+        , HON_SHIHARAI_TYOIKIN   = ?
+        , HAI_SHIHARAI_YOTAKUKIN = ?
+        , HAI_SHIHARAI_TYOIKIN   = ?
+        WHERE TK_NO = ?
+    </select>
+</sql>

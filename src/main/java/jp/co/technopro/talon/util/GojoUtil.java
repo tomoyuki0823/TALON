@@ -1,5 +1,8 @@
 package jp.co.technopro.talon.util;
 
+import jp.co.technopro.talon.dto.gojo.TkMemberDto;
+import jp.co.technopro.talon.dto.gojo.YotakukinShiharaiRirekiDto;
+
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -7,6 +10,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static jp.co.technopro.talon.mapper.TalonParamMapper.mapToDto;
+import static jp.co.technopro.talon.util.DbUtil.selectById;
 
 public class GojoUtil {
 
@@ -53,8 +59,7 @@ public class GojoUtil {
         insMap.put("SHORI_TUKI", shoriTuki);
 
         DbUtil.insertByMap(conn, "TK_YOTAKU", insMap,
-                Arrays.asList("TK_NO", "SHORI_TUKI"),
-                DbUtil.Dialect.SQLSERVER);
+                Arrays.asList("TK_NO", "SHORI_TUKI"));
 
     }
 
@@ -70,5 +75,35 @@ public class GojoUtil {
         }
     }
 
+    /**
+     * 特別会員番号（TK_NO）を指定して、会員基本情報（TK_MEMBER）および支払情報（TK_SHIHARAI）をDTOにマッピングします。
+     * <p>
+     * 主に以下の処理を行います：
+     * <ul>
+     *   <li>TK_MEMBER テーブルから該当するレコードを取得し {@link TkMemberDto} にマッピング</li>
+     *   <li>TK_SHIHARAI テーブルから支払履歴情報を取得し、{@link YotakukinShiharaiRirekiDto} にマッピングして {@code TkMemberDto} に設定</li>
+     * </ul>
+     *
+     * @param tkNo 特別会員番号
+     * @return {@link TkMemberDto} オブジェクト（該当する会員が存在しない場合は {@code null}）
+     * @throws SQLException データベース接続やSQL実行時にエラーが発生した場合
+     * @throws ClassNotFoundException JDBCドライバの読み込みに失敗した場合など
+     */
+    public static TkMemberDto setTkMemberDto(String tkNo) throws SQLException, ClassNotFoundException {
+        List<Map<String, Object>> tokMapList = selectById("TK_MEMBER", tkNo);
+        if (tokMapList.isEmpty()) return null;
+
+        Map<String, Object> tokMap = tokMapList.get(0);
+        TkMemberDto tkMemberDto = mapToDto(tokMap, TkMemberDto.class);
+
+        List<Map<String, Object>> shiharaiMapList = selectById("TK_SHIHARAI", tkNo);
+        if (!shiharaiMapList.isEmpty()) {
+            Map<String, Object> shiharaiMap = shiharaiMapList.get(0);
+            YotakukinShiharaiRirekiDto yotakukinShiharaiRirekiDto = mapToDto(shiharaiMap, YotakukinShiharaiRirekiDto.class);
+            tkMemberDto.setYotakukinShiharaiRirekiDto(yotakukinShiharaiRirekiDto);
+        }
+
+        return tkMemberDto;
+    }
 
 }

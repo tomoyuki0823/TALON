@@ -14,6 +14,9 @@ public final class SqlKey {
     /** 預託金更新処理（TK_YOTAKUのUPDATE） */
     public static final String SQL_KEY_UPDATE_YOTAKU = "UPDATE_YOTAKU";
 
+    /** 預託金更新処理（TK_YOTAKUのUPDATE） */
+    public static final String SQL_KEY_UPDATE_TKC001 = "UPDATE_TKC001";
+
     // 今後の追加例：
     // public static final String SQL_KEY_SELECT_MEMBER = "SELECT_MEMBER";
     // public static final String SQL_KEY_INSERT_HISTORY = "INSERT_HISTORY";

@@ -1,7 +1,8 @@
-package jp.co.technopro.talon.logic;
+package jp.co.technopro.talon.logic.Gojo;
 
+import jp.co.technopro.talon.dto.TalonParamDto;
+import jp.co.technopro.talon.logic.ExecutableLogic;
 import jp.co.technopro.talon.util.DbUtil;
-import jp.co.technopro.talon.util.DbUtil.Dialect;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -14,11 +15,12 @@ import static jp.co.technopro.talon.util.LogicUtil.buildResult;
 public class Tkc001Service implements ExecutableLogic {
 
     @Override
-    public Map<String, Object> run(Connection conn, Map<String, Object> params, String eventId) {
+    public Map<String, Object> run(Connection conn, TalonParamDto paramDto) {
         try {
+            String eventId = paramDto.getEventId();
             switch (eventId) {
                 case SIMEDATA:
-                    return setSimeData(conn, params);
+                    return setSimeData(conn, paramDto);
                 default:
                     return buildResult(false, "未対応のイベントID: " + eventId);
             }
@@ -27,7 +29,10 @@ public class Tkc001Service implements ExecutableLogic {
         }
     }
 
-    private Map<String, Object> setSimeData(Connection conn, Map<String, Object> params) throws SQLException {
+    private Map<String, Object> setSimeData(Connection conn, TalonParamDto paramDto) throws SQLException {
+
+        Map<String, Object> params = paramDto.getConditionData();
+
         String shoriTuki = (String) params.get(MAP_KEY_SHORI_TUKI);
 
         conn.setAutoCommit(false);
@@ -65,8 +70,7 @@ public class Tkc001Service implements ExecutableLogic {
             insMap.put("SIME_STATUS", "1");
 
             DbUtil.insertByMap(conn, "TKC001", insMap,
-                    Arrays.asList("SHORI_TUKI", "TK_DVS", "SIME_STATUS"),
-                    Dialect.SQLSERVER);
+                    Arrays.asList("SHORI_TUKI", "TK_DVS", "SIME_STATUS"));
         }
     }
 

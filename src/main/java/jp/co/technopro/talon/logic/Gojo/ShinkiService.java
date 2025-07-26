@@ -1,5 +1,7 @@
-package jp.co.technopro.talon.logic;
+package jp.co.technopro.talon.logic.Gojo;
 
+import jp.co.technopro.talon.dto.TalonParamDto;
+import jp.co.technopro.talon.logic.ExecutableLogic;
 import jp.co.technopro.talon.sql.SqlLoader;
 import jp.co.technopro.talon.util.DbUtil;
 
@@ -7,6 +9,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.*;
 
+import static jp.co.technopro.talon.consts.CodeValues.TK_DVS_SHINKI;
 import static jp.co.technopro.talon.consts.EventId.*;
 import static jp.co.technopro.talon.consts.Messages.*;
 import static jp.co.technopro.talon.consts.ParamKey.*;
@@ -14,6 +17,7 @@ import static jp.co.technopro.talon.consts.SqlXmlPath.*;
 import static jp.co.technopro.talon.consts.TableName.*;
 import static jp.co.technopro.talon.util.DbUtil.*;
 import static jp.co.technopro.talon.util.LogicUtil.buildResult;
+import static jp.co.technopro.talon.util.LogicUtil.updateTkc001;
 
 
 public class ShinkiService implements ExecutableLogic {
@@ -21,16 +25,17 @@ public class ShinkiService implements ExecutableLogic {
     private final SqlLoader sqlLoader = new SqlLoader(SQL_SHINKI);
 
     @Override
-    public Map<String, Object> run(Connection conn, Map<String, Object> params, String eventId) throws SQLException {
+    public Map<String, Object> run(Connection conn, TalonParamDto paramDto) throws SQLException {
+        String eventId = paramDto.getEventId();
         switch (eventId) {
-            case GENSHOKU_CHK:
-                return chkGensyoku(conn, params);
+            case SHINKI_GENSHOKU_CHK:
+                return chkGensyoku(conn, paramDto);
 
-            case DUPLICATE_GENSHOKU_CHK:
-                return chkDuplicate(conn, params);
+            case SHINKI_DUPLICATE_GENSHOKU_CHK:
+                return chkDuplicate(conn, paramDto);
 
             case SHINKI_HON_TOUROKU:
-                return shinkiSimeRenkei(conn, params);
+                return shinkiSimeRenkei(conn, paramDto);
 
             default:
                 return buildResult(false, "未対応のイベントID: " + eventId);
@@ -44,12 +49,14 @@ public class ShinkiService implements ExecutableLogic {
      * 各レコードの挿入処理はトランザクション内で行われ、失敗時はロールバックされます。
      * </p>
      *
-     * @param conn   DBコネクション（autoCommit=false 推奨）
-     * @param params パラメータ（MAP_KEY_SHORI_TUKI を含む必要あり）
+     * @param conn     DBコネクション（autoCommit=false 推奨）
+     * @param paramDto パラメータ（MAP_KEY_SHORI_TUKI を含む必要あり）
      * @return 結果Map（success=true/false、messageあり）
      * @throws SQLException DBアクセス時のエラー
      */
-    private Map<String, Object> shinkiSimeRenkei(Connection conn, Map<String, Object> params) throws SQLException {
+    private Map<String, Object> shinkiSimeRenkei(Connection conn, TalonParamDto paramDto) throws SQLException {
+
+        Map<String, Object> params = paramDto.getConditionData();
 
         String shoriTuki = (String) params.get(MAP_KEY_SHORI_TUKI);
         if (shoriTuki == null || shoriTuki.isBlank()) {
@@ -76,6 +83,8 @@ public class ShinkiService implements ExecutableLogic {
                 insertByMapEx(conn, TABLE_TK_MEMBER, record, false);
             }
 
+            updateTkc001(conn, shoriTuki, TK_DVS_SHINKI);
+
             return buildResult(true, "処理が正常に完了しました。件数: " + shinkiList.size());
 
         } catch (SQLException e) {
@@ -83,13 +92,14 @@ public class ShinkiService implements ExecutableLogic {
             e.printStackTrace();
             return buildResult(false, "処理中にエラーが発生しました: " + e.getMessage());
         }
+
     }
 
     /**
      * TK_MEMBER テーブルから指定された TK_NO を削除します。
      *
-     * @param conn  DB接続
-     * @param tkNo  対象会員番号
+     * @param conn DB接続
+     * @param tkNo 対象会員番号
      * @throws SQLException SQL例外が発生した場合
      */
     private void deleteTkMember(Connection conn, String tkNo) throws SQLException {
@@ -102,12 +112,14 @@ public class ShinkiService implements ExecutableLogic {
      * <p>GEN_T_KAIIN テーブルにおいて、NO が一致し GOJYO_TAIKAI_CD が NULL のレコードが
      * 存在しない（つまり退会済み）場合に成功と判断します。</p>
      *
-     * @param conn   DB接続
-     * @param params パラメータ（MAP_KEY_NO を含む必要あり）
+     * @param conn     DB接続
+     * @param paramDto パラメータ（MAP_KEY_NO を含む必要あり）
      * @return 成功時は true、退会していない場合は false とエラーメッセージ
      * @throws SQLException DBアクセスエラー
      */
-    private Map<String, Object> chkGensyoku(Connection conn, Map<String, Object> params) throws SQLException {
+    private Map<String, Object> chkGensyoku(Connection conn, TalonParamDto paramDto) throws SQLException {
+
+        Map<String, Object> params = paramDto.getTargetData();
 
         int no = (int) params.get(MAP_KEY_NO);
 
@@ -128,12 +140,14 @@ public class ShinkiService implements ExecutableLogic {
     /**
      * TK_SHINKI テーブルに指定された会員番号（no）が既に存在するかをチェックします。
      *
-     * @param conn   DBコネクション
-     * @param params パラメータマップ（"no" キーを含む必要があります）
+     * @param conn     DBコネクション
+     * @param paramDto パラメータマップ（"no" キーを含む必要があります）
      * @return 重複があれば success=false とエラーメッセージ、なければ success=true と正常メッセージを含む結果Map
      * @throws SQLException DBアクセスエラーが発生した場合
      */
-    private Map<String, Object> chkDuplicate(Connection conn, Map<String, Object> params) throws SQLException {
+    private Map<String, Object> chkDuplicate(Connection conn, TalonParamDto paramDto) throws SQLException {
+
+        Map<String, Object> params = paramDto.getTargetData();
         int no = (int) params.get(MAP_KEY_NO);
         Map<String, Object> whereMap = new HashMap<>();
         whereMap.put(MAP_KEY_NO, no);

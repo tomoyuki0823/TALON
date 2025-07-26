@@ -21,11 +21,15 @@ public final class EventId {
     public static final String SIMEDATA = "SIMEDATA";
 
     /** 現職チェック（存在確認） */
-    public static final String GENSHOKU_CHK = "GENSYOKU_CHK";
+    public static final String SHINKI_GENSHOKU_CHK = "GENSYOKU_CHK";
 
     /** 現職重複チェック（TK_SHINKI） */
-    public static final String DUPLICATE_GENSHOKU_CHK = "DUPLICATE_GENSYOKU_CHK";
+    public static final String SHINKI_DUPLICATE_GENSHOKU_CHK = "DUPLICATE_GENSYOKU_CHK";
 
     /** 現職重複チェック（TK_SHINKI） */
-    public static final String SHINKI_HON_TOUROKU = "SHINKI_HON_TOUROKU";
+    public static final String SHINKI_HON_TOUROKU = "HON_TOUROKU";
+
+    /** 変更本登録（TK_HENKO） */
+    public static final String HENKO_HON_TOUROKU = "HON_TOUROKU";
+
 }

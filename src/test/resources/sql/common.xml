@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sql>
+    <select id="UPDATE_TKC001">
+       UPDATE TKC001 SET SIME_STATUS = '2' WHERE SHORI_TUKI = ? AND TK_DVS = ?
+    </select>
+
+</sql>

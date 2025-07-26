@@ -34,4 +34,7 @@ public final class TableName {
 
     /** 新規加入（現職）テーブル */
     public static final String TABLE_GEN_T_KAIIN = "GEN_T_KAIIN";
+
+    /** 変更管理 */
+    public static final String TABLE_TK_HENKO = "TK_HENKO";
 }
