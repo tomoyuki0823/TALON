@@ -7,6 +7,8 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
+import static jp.co.technopro.talon.consts.MapKeyCommon.MAP_KEY_MESSAGE;
+import static jp.co.technopro.talon.consts.MapKeyCommon.MAP_KEY_STATUS;
 import static jp.co.technopro.talon.consts.SqlKey.SQL_KEY_UPDATE_TKC001;
 import static jp.co.technopro.talon.consts.SqlXmlPath.SQL_COMMON;
 
@@ -23,8 +25,8 @@ public class LogicUtil {
      */
     public static Map<String, Object> buildResult(boolean success, String msg) {
         Map<String, Object> result = new HashMap<>();
-        result.put("success", success);
-        result.put("msg", msg);
+        result.put(MAP_KEY_STATUS, success);
+        result.put(MAP_KEY_MESSAGE, msg);
         return result;
     }
 

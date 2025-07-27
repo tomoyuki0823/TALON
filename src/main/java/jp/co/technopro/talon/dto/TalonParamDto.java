@@ -25,6 +25,23 @@ public class TalonParamDto {
     private Map<String, Object> block8;
     private Map<String, Object> block9;
 
+    private String buttomId;
+
+    /** Talonの実行イベントID（例: "onButton"） */
+    private String tlnEventId;
+
+    /** 登録処理かどうか（Talon.isInsert()） */
+    private boolean tlnIsInsert;
+
+    /** 更新処理かどうか（Talon.isUpdate()） */
+    private boolean tlnIsUpdate;
+
+    /** 削除処理かどうか（Talon.isDelete()） */
+    private boolean tlnIsDelete;
+
+    /** Talonのセッション情報 */
+    private List<Map<String, Object>> tlnSession;
+
     public void setEventId(String eventId) {
         this.eventId = eventId;
     }
@@ -145,6 +162,51 @@ public class TalonParamDto {
         this.block9 = block9;
     }
 
-    // --- Getter / Setter 省略（IDEやLombokで生成可） ---
-    // @Getter, @Setter を使用する場合 lombok依存追加が必要
+    public String getButtomId() {
+        return buttomId;
+    }
+
+    public void setButtomId(String buttomId) {
+        this.buttomId = buttomId;
+    }
+
+    public String getTlnEventId() {
+        return tlnEventId;
+    }
+
+    public void setTlnEventId(String tlnEventId) {
+        this.tlnEventId = tlnEventId;
+    }
+
+    public boolean isTlnIsInsert() {
+        return tlnIsInsert;
+    }
+
+    public void setTlnIsInsert(boolean tlnIsInsert) {
+        this.tlnIsInsert = tlnIsInsert;
+    }
+
+    public boolean isTlnIsUpdate() {
+        return tlnIsUpdate;
+    }
+
+    public void setTlnIsUpdate(boolean tlnIsUpdate) {
+        this.tlnIsUpdate = tlnIsUpdate;
+    }
+
+    public boolean isTlnIsDelete() {
+        return tlnIsDelete;
+    }
+
+    public void setTlnIsDelete(boolean tlnIsDelete) {
+        this.tlnIsDelete = tlnIsDelete;
+    }
+
+    public List<Map<String, Object>> getTlnSession() {
+        return tlnSession;
+    }
+
+    public void setTlnSession(List<Map<String, Object>> tlnSession) {
+        this.tlnSession = tlnSession;
+    }
 }

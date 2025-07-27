@@ -31,14 +31,17 @@ public class SqlLoader {
             for (int i = 0; i < nodes.getLength(); i++) {
                 Element e = (Element) nodes.item(i);
                 String id = e.getAttribute("id").trim();
-                String sql = e.getTextContent().trim().replaceAll("\\s+", " ");
+                String rawSql = e.getTextContent();
+
+                // 行ごとに整形：各行の先頭インデントを削除して改行維持
+                String formattedSql = formatSqlPreserveLines(rawSql);
 
                 if (sqlMap.containsKey(id)) {
                     throw new RuntimeException("SQL ID が重複しています: " + id);
                 }
 
-                sqlMap.put(id, sql);
-                System.out.println("Loaded SQL [" + id + "]: " + sql);
+                sqlMap.put(id, formattedSql);
+                System.out.println("Loaded SQL [" + id + "]:\n" + formattedSql);
             }
 
         } catch (Exception e) {
@@ -53,5 +56,22 @@ public class SqlLoader {
      */
     public String get(String id) {
         return sqlMap.get(id);
+    }
+
+    /**
+     * インデントを整えて改行を保ったままSQLを整形します。
+     * 例: 8文字以上のインデントを削除（お好みで調整可）
+     *
+     * @param sql CDATAなどから得た元のSQL文字列
+     * @return 整形済みのSQL
+     */
+    private static String formatSqlPreserveLines(String sql) {
+        StringBuilder sb = new StringBuilder();
+        String[] lines = sql.split("\n");
+        for (String line : lines) {
+            // 行頭の8スペース（またはタブ等）を除去（必要に応じて調整）
+            sb.append(line.replaceFirst("^\\s{8}", "").stripTrailing()).append("\n");
+        }
+        return sb.toString().trim(); // 最後の改行は不要ならtrim()
     }
 }

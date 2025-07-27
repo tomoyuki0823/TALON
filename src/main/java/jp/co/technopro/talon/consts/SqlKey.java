@@ -17,6 +17,15 @@ public final class SqlKey {
     /** 預託金更新処理（TK_YOTAKUのUPDATE） */
     public static final String SQL_KEY_UPDATE_TKC001 = "UPDATE_TKC001";
 
+    /** TALONの機能IDとイベントを紐づけたマスタを検索する */
+    public static final String SQL_KEY_TPI_M_FUNC_EVENT = "TPI_M_FUNC_EVENT";
+
+    /** TALONの機能IDとイベントを紐づけたマスタを検索する */
+    public static final String SQL_KEY_TPI_M_FUNC_EVENT_BUTTOM = "TPI_M_FUNC_EVENT_BUTTOM";
+
+    /** Javaイベント取得するSQLキー */
+    public static final String SQL_KEY_TPI_M_JAVA_LOGIC = "TPI_M_JAVA_LOGIC";
+
     // 今後の追加例：
     // public static final String SQL_KEY_SELECT_MEMBER = "SELECT_MEMBER";
     // public static final String SQL_KEY_INSERT_HISTORY = "INSERT_HISTORY";

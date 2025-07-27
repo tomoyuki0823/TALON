@@ -54,13 +54,13 @@ public class ShinkiService implements ExecutableLogic {
      * @return 結果Map（success=true/false、messageあり）
      * @throws SQLException DBアクセス時のエラー
      */
-    private Map<String, Object> shinkiSimeRenkei(Connection conn, TalonParamDto paramDto) throws SQLException {
+    public Map<String, Object> shinkiSimeRenkei(Connection conn, TalonParamDto paramDto) throws SQLException {
 
         Map<String, Object> params = paramDto.getConditionData();
 
         String shoriTuki = (String) params.get(MAP_KEY_SHORI_TUKI);
         if (shoriTuki == null || shoriTuki.isBlank()) {
-            return buildResult(false, "処理月（SHORI_TUKI）が指定されていません。");
+            return buildResult(false, MSG_NON_SHORI_TUKI);
         }
 
         Map<String, Object> whereMap = new HashMap<>();
@@ -69,7 +69,7 @@ public class ShinkiService implements ExecutableLogic {
         List<Map<String, Object>> shinkiList = selectList(conn, TABLE_TK_SHINKI, whereMap);
 
         if (shinkiList.isEmpty()) {
-            return buildResult(true, "処理対象データは存在しません。");
+            return buildResult(false, "新規登録の処理対象データは存在しません。");
         }
 
         try {
@@ -117,7 +117,7 @@ public class ShinkiService implements ExecutableLogic {
      * @return 成功時は true、退会していない場合は false とエラーメッセージ
      * @throws SQLException DBアクセスエラー
      */
-    private Map<String, Object> chkGensyoku(Connection conn, TalonParamDto paramDto) throws SQLException {
+    public Map<String, Object> chkGensyoku(Connection conn, TalonParamDto paramDto) throws SQLException {
 
         Map<String, Object> params = paramDto.getTargetData();
 
@@ -145,7 +145,7 @@ public class ShinkiService implements ExecutableLogic {
      * @return 重複があれば success=false とエラーメッセージ、なければ success=true と正常メッセージを含む結果Map
      * @throws SQLException DBアクセスエラーが発生した場合
      */
-    private Map<String, Object> chkDuplicate(Connection conn, TalonParamDto paramDto) throws SQLException {
+    public Map<String, Object> chkDuplicate(Connection conn, TalonParamDto paramDto) throws SQLException {
 
         Map<String, Object> params = paramDto.getTargetData();
         int no = (int) params.get(MAP_KEY_NO);

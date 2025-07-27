@@ -11,7 +11,7 @@ public final class TableName {
     /** 預託金予定テーブル */
     public static final String TABLE_TK_T_YOTEKUKIN_YOTEI = "TK_T_YOTEKUKIN_YOTEI";
 
-    /** 与託金マスタ定義テーブル */
+    /** 預託金マスタ定義テーブル */
     public static final String TABLE_TK_M_YOTEKUKIN_YOTEI = "TK_M_YOTEKUKIN_YOTEI";
 
     /** 与託情報本体（TK_YOTAKU） */
@@ -37,4 +37,7 @@ public final class TableName {
 
     /** 変更管理 */
     public static final String TABLE_TK_HENKO = "TK_HENKO";
+
+    /** 変更管理2 */
+    public static final String TABLE_TK_HENKO2 = "TK_HENKO2";
 }

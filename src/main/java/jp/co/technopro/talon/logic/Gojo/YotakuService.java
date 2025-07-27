@@ -19,8 +19,10 @@ import java.sql.SQLException;
 import java.util.*;
 
 import static jp.co.technopro.talon.consts.EventId.*;
+import static jp.co.technopro.talon.consts.Messages.*;
 import static jp.co.technopro.talon.consts.ParamKey.*;
 import static jp.co.technopro.talon.consts.SqlXmlPath.SQL_YOTAKU;
+import static jp.co.technopro.talon.consts.TableName.TABLE_TK_T_YOTEKUKIN_YOTEI;
 import static jp.co.technopro.talon.consts.TableName.TABLE_TK_YOTAKU;
 import static jp.co.technopro.talon.util.DbUtil.*;
 import static jp.co.technopro.talon.util.GojoUtil.*;
@@ -39,15 +41,15 @@ public class YotakuService implements ExecutableLogic {
             switch (eventId) {
                 case YOTAKU_YOTEI:
                     setYotakukinYotei(conn, paramDto);
-                    return buildResult(true, "与託金予定を登録しました");
+                    return setYotakukinYotei(conn, paramDto);
 
                 case INIT_INFO:
                     setYotakuInit(conn, paramDto);
-                    return buildResult(true, "初期情報の登録が完了しました");
+                    return setYotakuInit(conn, paramDto);
 
                 case CALC_YOTAKUKIN:
                     calcYotakukin(conn, paramDto);
-                    return buildResult(true, "与託金額の計算が完了しました");
+                    return calcYotakukin(conn, paramDto);
 
                 default:
                     return buildResult(false, "未対応のイベントID: " + eventId);
@@ -57,15 +59,35 @@ public class YotakuService implements ExecutableLogic {
         }
     }
 
-    private void calcYotakukin(Connection conn, TalonParamDto paramDto) throws SQLException {
+    /**
+     * 預託金・弔慰金の支給額を計算し、TK_MEMBERに反映します。
+     *
+     * <p>
+     * 指定されたTK_NOと退職区分（本人・配偶者）に基づいて、
+     * 予め定義されたマスタロジック（CALC_YOTAKUKIN）で金額を算出し、
+     * TK_MEMBERテーブルの該当項目を更新します。
+     * </p>
+     *
+     * <p>
+     * 取得データが存在しない、または金額がすべて0である場合は、
+     * 初期化として全て0で登録します。
+     * </p>
+     *
+     * @param conn     DBコネクション（autoCommit=false推奨）
+     * @param paramDto パラメータDTO（targetDataに TK_NO, HON_TAISYOKU_CD, HAI_TAISYOKU_CD を含む必要あり）
+     * @return 処理結果Map（success: true/false, message: 処理結果）
+     * @throws SQLException SQL実行時にエラーが発生した場合
+     */
+    public Map<String, Object> calcYotakukin(Connection conn, TalonParamDto paramDto) throws SQLException {
 
         Map<String, Object> paramMap = paramDto.getTargetData();
         String tkNo = (String) paramMap.get(MAP_KEY_TK_NO);
         String honCd = (String) paramMap.get(MAP_KEY_HON_TAISYOKU_CD);
         String haiCd = (String) paramMap.get(MAP_KEY_HAI_TAISYOKU_CD);
 
-        // ① 預託金予定取得
+        // ① 預託金予定を取得
         String selectSql = sqlLoader.get("CALC_YOTAKUKIN");
+
         BigDecimal honYotaku = BigDecimal.ZERO;
         BigDecimal haiYotaku = BigDecimal.ZERO;
         BigDecimal honTyoi = BigDecimal.ZERO;
@@ -88,7 +110,7 @@ public class YotakuService implements ExecutableLogic {
             }
         }
 
-        // すべてがゼロなら、ゼロ初期化として実行
+        // 実データが有意でない場合はゼロ初期化として扱う
         boolean shouldUpdate = hasData && (
                 honYotaku.compareTo(BigDecimal.ZERO) != 0 ||
                         haiYotaku.compareTo(BigDecimal.ZERO) != 0 ||
@@ -96,7 +118,6 @@ public class YotakuService implements ExecutableLogic {
                         haiTyoi.compareTo(BigDecimal.ZERO) != 0
         );
 
-        // 実データに意味がある場合のみ更新。なければ全てゼロで更新
         if (!shouldUpdate) {
             honYotaku = BigDecimal.ZERO;
             haiYotaku = BigDecimal.ZERO;
@@ -104,7 +125,9 @@ public class YotakuService implements ExecutableLogic {
             haiTyoi = BigDecimal.ZERO;
         }
 
+        // ② TK_MEMBER を更新
         String updateSql = sqlLoader.get("UPDATE_YOTAKU");
+
         try (PreparedStatement psUpd = conn.prepareStatement(updateSql)) {
             psUpd.setBigDecimal(1, honYotaku);
             psUpd.setBigDecimal(2, honTyoi);
@@ -113,33 +136,37 @@ public class YotakuService implements ExecutableLogic {
             psUpd.setString(5, tkNo);
             psUpd.executeUpdate();
         }
-    }
 
+        return buildResult(true, MSG_SUCCESS);
+    }
     /**
      * 預託情報の初期登録処理を実行します。
      * TK_NOおよびSHORI_TUKIをキーにTK_YOTAKUテーブルを確認し、該当レコードが存在しない場合に限り、
      * 与託情報の登録処理を行います。
      *
-     * @param conn   DBコネクション
+     * @param conn     DBコネクション
      * @param paramDto TK_NO, SHORI_TUKI を含むパラメータマップ
+     * @return
      * @throws SQLException DBアクセスエラー
      */
-    public void setYotakuInit(Connection conn, TalonParamDto paramDto) throws SQLException {
+    public Map<String, Object> setYotakuInit(Connection conn, TalonParamDto paramDto) throws SQLException {
 
         Map<String, Object> paramMap = paramDto.getConditionData();
 
         String tkNo = SafeMapAccessUtil.getString(paramMap, MAP_KEY_TK_NO);
         String shoriTuki = SafeMapAccessUtil.getString(paramMap, MAP_KEY_SHORI_TUKI);
 
-        if (StringCheckUtil.isNullOrEmpty(tkNo) || StringCheckUtil.isNullOrEmpty(shoriTuki)) return;
+        if (StringCheckUtil.isNullOrEmpty(tkNo) || StringCheckUtil.isNullOrEmpty(shoriTuki)) return buildResult(false, MSG_NON_TK_OBJ);
 
         Map<String, Object> whereMaps = new HashMap<>();
         whereMaps.put(MAP_KEY_TK_NO, tkNo);
         whereMaps.put(MAP_KEY_SHORI_TUKI, shoriTuki);
 
-        if (!DbUtil.isTableEmpty(conn, TABLE_TK_YOTAKU, whereMaps)) return;
+        if (!DbUtil.isTableEmpty(conn, TABLE_TK_YOTAKU, whereMaps)) return buildResult(true, MSG_SUCCESS);
 
         insTkYotaku(conn, tkNo, shoriTuki);
+
+        return buildResult(true, MSG_SUCCESS);
     }
 
     /**
@@ -153,21 +180,22 @@ public class YotakuService implements ExecutableLogic {
      *   <li>既存の予定情報を削除後、新たに INSERT を実行</li>
      * </ul>
      *
-     * @param conn      DB接続オブジェクト（トランザクション内での使用を想定）
-     * @param paramDto  TK_NOを含むパラメータDTO。通常、画面やバッチなどから渡される。
+     * @param conn     DB接続オブジェクト（トランザクション内での使用を想定）
+     * @param paramDto TK_NOを含むパラメータDTO。通常、画面やバッチなどから渡される。
+     * @return
      * @throws SQLException           SQL操作中の例外（SELECT/DELETE/INSERT等）
      * @throws ClassNotFoundException JDBCドライバが見つからない場合などの例外
      */
-    public void setYotakukinYotei(Connection conn, TalonParamDto paramDto) throws SQLException, ClassNotFoundException {
+    public Map<String, Object> setYotakukinYotei(Connection conn, TalonParamDto paramDto) throws SQLException, ClassNotFoundException {
 
         Map<String, Object> params = paramDto.getConditionData();
 
         String TK_NO = params.get("TK_NO").toString();
-        if (isNullOrEmpty(TK_NO)) return;
+        if (isNullOrEmpty(TK_NO)) return buildResult(false, MSG_NON_TK_NO);
 
         TkMemberDto tkMemberDto  = setTkMemberDto(TK_NO);
 
-        if (tkMemberDto == null) return;
+        if (tkMemberDto == null) return buildResult(false, MSG_NON_TK_OBJ);
         YotakukinShiharaiRirekiDto yotakukinShiharaiRirekiDto = tkMemberDto.getYotakukinShiharaiRirekiDto();
         List<Map<String, Object>> yotakukinYoteiMstMapList = getMstYotakukin(conn);
         delYotakuyotei(conn, TK_NO);
@@ -191,9 +219,12 @@ public class YotakuService implements ExecutableLogic {
 
             YotakukinStrategyFactory.get(ptnCd).ifPresent(strategy -> strategy.apply(map, ctx));
 
-            map.put("TK_NO", TK_NO);
-            insertByMapEx(conn, "TK_T_YOTEKUKIN_YOTEI", map);
+            map.put(MAP_KEY_TK_NO, TK_NO);
+            insertByMapEx(conn, TABLE_TK_T_YOTEKUKIN_YOTEI, map, true);
         }
+
+        return buildResult(true, MSG_SUCCESS);
+
     }
 
     public List<Map<String, Object>> getMstYotakukin(Connection conn) throws SQLException {

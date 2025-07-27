@@ -1,4 +1,4 @@
-package jp.co.technopro.talon.logic;
+package jp.co.technopro.talon.logic.gojo;
 
 import jp.co.technopro.talon.dto.TalonParamDto;
 import jp.co.technopro.talon.logic.Gojo.YotakuService;
@@ -8,7 +8,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.util.*;
 

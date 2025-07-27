@@ -26,12 +26,10 @@ public final class ParamKey {
     /** 会員番号（現職チェック用） */
     public static final String MAP_GOJYO_TAIKAI_CD = "GOJYO_TAIKAI_CD";
 
-    /** 特別会員業務区分  */
-    public static final String MAP_KEY_TK_DVS = "TK_DVS";
-
     /** 成功フラグ */
     public static final String MAP_KEY_SUCCESS = "success";
 
     /** メッセージ文字列 */
     public static final String MAP_KEY_MSG = "msg";
+
 }

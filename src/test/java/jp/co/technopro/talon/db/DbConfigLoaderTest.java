@@ -12,11 +12,11 @@ public class DbConfigLoaderTest {
     @Test
     void testLoadFromPropertiesFile() {
         // テスト用プロパティファイルのパスを取得
-        URL resource = getClass().getClassLoader().getResource("db.properties");
+        URL resource = getClass().getClassLoader().getResource("config/db.properties");
         assertNotNull(resource, "プロパティファイルが見つかりません");
 
         // 実行
-        DbConfig config = DbConfigLoader.load(resource.getPath());
+        DbConfig config = DbConfigLoader.load();
 
         // 検証
         assertEquals("jdbc:sqlserver://172.31.6.72:1433;DatabaseName=TALON;encrypt=false;useSSL=false", config.getUrl());

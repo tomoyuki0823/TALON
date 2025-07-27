@@ -8,10 +8,6 @@ import java.util.Objects;
  */
 public class MapCheckUtil {
 
-    private MapCheckUtil() {
-        // インスタンス化防止
-    }
-
     /**
      * Map が null または空かどうかを判定します。
      *
@@ -60,5 +56,32 @@ public class MapCheckUtil {
      */
     public static boolean allValuesAreNull(Map<?, ?> map) {
         return map != null && !map.isEmpty() && map.values().stream().allMatch(Objects::isNull);
+    }
+
+    /**
+     * Mapがnullまたは空かどうかを判定します。
+     *
+     * @param map 判定対象のMap
+     * @return nullまたは空ならtrue
+     */
+    public static boolean isEmpty(Map<?, ?> map) {
+        return map == null || map.isEmpty();
+    }
+
+    /**
+     * 指定されたMapから指定キーの値を取り出し、いずれかがnullまたは空文字列であればtrue。
+     *
+     * @param map   チェック対象のMap
+     * @param keys  チェック対象のキー群
+     * @return いずれかがnullまたは空文字列であればtrue
+     */
+    public static boolean isAnyBlank(Map<String, Object> map, String... keys) {
+        if (map == null || keys == null) return true;
+        for (String key : keys) {
+            Object val = map.get(key);
+            if (val == null) return true;
+            if (val instanceof String && ((String) val).trim().isEmpty()) return true;
+        }
+        return false;
     }
 }

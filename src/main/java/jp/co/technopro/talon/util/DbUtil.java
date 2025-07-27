@@ -65,6 +65,38 @@ public class DbUtil {
         }
     }
 
+    /**
+     * プレースホルダ付きSQLとバインド値を使って擬似SQLを生成します（デバッグ用）
+     *
+     * @param rawSql プレースホルダ（?）付きSQL
+     * @param params バインドパラメータ
+     * @return バインド済みのSQL風文字列
+     */
+    private static String buildExecutedSql(String rawSql, Object... params) {
+        if (params == null || params.length == 0) return rawSql;
+
+        StringBuilder result = new StringBuilder();
+        int paramIndex = 0;
+
+        for (int i = 0; i < rawSql.length(); i++) {
+            char c = rawSql.charAt(i);
+            if (c == '?' && paramIndex < params.length) {
+                Object param = params[paramIndex++];
+                String value;
+                if (param == null) {
+                    value = "NULL";
+                } else if (param instanceof String || param instanceof java.sql.Date || param instanceof java.time.LocalDate) {
+                    value = "'" + param.toString().replace("'", "''") + "'";
+                } else {
+                    value = param.toString();
+                }
+                result.append(value);
+            } else {
+                result.append(c);
+            }
+        }
+        return result.toString();
+    }
 
     /**
      * 指定されたSQLを指定のDBコネクション上で実行し、
@@ -79,6 +111,10 @@ public class DbUtil {
      * @throws SQLException SQL構文エラーや実行中のDB例外が発生した場合
      */
     public static List<Map<String, Object>> select(Connection conn, String sql, Object... params) throws SQLException {
+        // バインド後の擬似SQLをログ出力
+        String simulatedSql = buildExecutedSql(sql, params);
+        System.out.println("Executing SQL: " + simulatedSql);
+
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             setParams(ps, params);
             try (ResultSet rs = ps.executeQuery()) {
@@ -367,10 +403,22 @@ public class DbUtil {
      * @throws SQLException バインド時のエラー
      */
     private static void setParams(PreparedStatement ps, Object... params) throws SQLException {
+        if (params == null || params.length == 0) return;
+
+        int expectedCount = ps.getParameterMetaData().getParameterCount();
+        if (params.length != expectedCount) {
+            throw new SQLException("プレースホルダ（?）の数とバインドするパラメータ数が一致していません。"
+                    + " expected=" + expectedCount + ", actual=" + params.length);
+        }
+
         for (int i = 0; i < params.length; i++) {
+
+            Object param = params[i];
+            System.out.println("  -> param[" + (i + 1) + "] = " + param + " (" + (param != null ? param.getClass().getSimpleName() : "null") + ")");
             ps.setObject(i + 1, params[i]);
         }
     }
+
 
     /**
      * ResultSetの全行をMap形式に変換してListで返します。
@@ -599,8 +647,7 @@ public class DbUtil {
      * @throws SQLException SQL実行時のエラー
      */
     public static void insertByMapEx(Connection conn, String tableName, Map<String, Object> valueMap, boolean includeNulls) throws SQLException {
-        DbDialect dialect = DbDialectFactory.createDialect(conn);
-        List<String> columns = dialect.getTableColumns(conn, tableName, valueMap);
+        List<String> columns = gettableColList(conn, tableName, valueMap);
 
         List<String> insertCols = new ArrayList<>();
         List<Object> params = new ArrayList<>();
@@ -637,8 +684,8 @@ public class DbUtil {
      * @throws IllegalArgumentException 入力値に不備がある場合（例: カラムが空など）
      */
     public static int updateByMapEx(Connection conn, String tableName, Map<String, Object> valueMap, Map<String, Object> whereMap, boolean includeNulls) throws SQLException {
-        DbDialect dialect = DbDialectFactory.createDialect(conn);
-        List<String> columns = dialect.getTableColumns(conn, tableName, valueMap);
+
+        List<String> columns = gettableColList(conn, tableName, valueMap);
 
         if (columns == null || columns.isEmpty()) {
             throw new IllegalArgumentException("カラム情報が取得できませんでした: " + tableName);
@@ -685,37 +732,30 @@ public class DbUtil {
 
 
     /**
-     * 指定されたSQLを実行し、結果セットの先頭1件をMap形式で返します。
-     * 結果が0件の場合は null を返します。複数件が返ってきた場合も先頭の1件のみを返却します。
+     * 指定テーブルに対して、WHERE条件に合致する最初の1レコードを取得します。
      *
-     * <p>各Mapのキーはカラム名（エイリアス含む）であり、値は対応するカラム値です。</p>
-     *
-     * @param conn   DBコネクション（null不可）
-     * @param sql    実行するSELECT文（例: "SELECT * FROM TKC001 WHERE ID = ?"）
-     * @param params プレースホルダにバインドされるパラメータ（可変長）
-     * @return 取得された1レコード（Map形式）、該当しなければ null
-     * @throws SQLException SQL実行時の例外
+     * @param conn      DBコネクション
+     * @param tableName テーブル名（例: "TK_MEMBER"）
+     * @param columns   取得カラム（null または空の場合は *）
+     * @param whereMap  WHERE条件（必須）
+     * @param orderBy   ORDER BY句（null可）
+     * @return 最初の1件のMap、存在しなければnull
+     * @throws SQLException DBアクセス時の例外
      */
-    public static Map<String, Object> selectOne(Connection conn, String sql, Object... params) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            for (int i = 0; i < params.length; i++) {
-                ps.setObject(i + 1, params[i]);
-            }
+    public static Map<String, Object> selectOne(Connection conn, String tableName, List<String> columns,
+                                                Map<String, Object> whereMap, String orderBy) throws SQLException {
 
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    ResultSetMetaData meta = rs.getMetaData();
-                    Map<String, Object> result = new HashMap<>();
-                    for (int i = 1; i <= meta.getColumnCount(); i++) {
-                        result.put(meta.getColumnLabel(i), rs.getObject(i));
-                    }
-                    return result;
-                }
-            }
-        }
-        return null;
+        // LIMIT = 1 を指定したSELECT文を構築
+        String sql = DbUtil.buildSimpleSelectSQL(tableName, columns, whereMap, orderBy, 1);
+        List<Object> params = columnsToParams(whereMap);
+        List<Map<String, Object>> resultList = select(conn, sql, params.toArray());
+
+        return resultList.isEmpty() ? null : resultList.get(0);
     }
 
+    private static List<Object> columnsToParams(Map<String, Object> map) {
+        return map.values().stream().collect(Collectors.toList());
+    }
 
     /**
      * 指定テーブルに対して、WHERE条件に基づく1件取得SQLを自動生成して実行します。
@@ -768,27 +808,13 @@ public class DbUtil {
      * @throws SQLException SQL実行時の例外
      */
     public static List<Map<String, Object>> selectList(Connection conn, String tableName, Map<String, Object> whereMap) throws SQLException {
-        StringBuilder sql = new StringBuilder("SELECT * FROM " + tableName);
-        List<Object> paramList = new ArrayList<>();
+        // SELECT * + WHERE句構築 + ORDER BYなし + LIMITなし
+        String sql = buildSimpleSelectSQL(tableName, null, whereMap, null, 0);
+        List<Object> params = columnsToParams(whereMap);
 
-        if (whereMap != null && !whereMap.isEmpty()) {
-            sql.append(" WHERE ");
-            List<String> conditions = new ArrayList<>();
-
-            for (Map.Entry<String, Object> entry : whereMap.entrySet()) {
-                if (entry.getValue() == null) {
-                    conditions.add(entry.getKey() + " IS NULL");
-                } else {
-                    conditions.add(entry.getKey() + " = ?");
-                    paramList.add(entry.getValue());
-                }
-            }
-            sql.append(String.join(" AND ", conditions));
-        }
-
-        try (PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-            for (int i = 0; i < paramList.size(); i++) {
-                ps.setObject(i + 1, paramList.get(i));
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
             }
 
             try (ResultSet rs = ps.executeQuery()) {
@@ -850,14 +876,58 @@ public class DbUtil {
         return setClause.toString();
     }
 
-
     /**
-     * Dialectに応じたLIMIT句を生成します。
+     * 単純なSELECT文を構築します（WHERE/ORDER/LIMIT対応）。
      *
-     * @param dialect RDBMSの種類
-     * @param limit   最大件数
-     * @return LIMIT句（SQLServerはTOP句として返却）
+     * @param tableName テーブル名
+     * @param columns   取得カラム（nullまたは空なら *）
+     * @param whereMap  WHERE条件（null可）
+     * @param orderBy   ORDER BY句（null可）
+     * @param limit     最大件数（0以下ならLIMITなし）
+     * @return SQL文文字列（Dialectに応じたLIMIT付き）
      */
+    public static String buildSimpleSelectSQL(String tableName, List<String> columns,
+                                              Map<String, Object> whereMap, String orderBy, int limit) {
+        Dialect dialect = detectDialect(); // 接続先から自動判定（別途実装済み前提）
+
+        // カラム部
+        String selectCols = (columns == null || columns.isEmpty())
+                ? "*"
+                : String.join(", ", columns);
+
+        // LIMIT句 or TOP句
+        String limitClause = (limit > 0) ? buildLimitClause(dialect, limit) : "";
+
+        // SQL Serverの場合、TOPはSELECT句内に必要
+        String selectClause = dialect == Dialect.SQLSERVER && !limitClause.isEmpty()
+                ? "SELECT " + limitClause + " " + selectCols
+                : "SELECT " + selectCols;
+
+        StringBuilder sql = new StringBuilder(selectClause)
+                .append(" FROM ").append(tableName);
+
+        // WHERE句生成
+        if (whereMap != null && !whereMap.isEmpty()) {
+            String whereClause = whereMap.keySet().stream()
+                    .map(key -> key + " = ?")
+                    .collect(Collectors.joining(" AND "));
+            sql.append(" WHERE ").append(whereClause);
+        }
+
+        // ORDER BY句
+        if (orderBy != null && !orderBy.isBlank()) {
+            sql.append(" ORDER BY ").append(orderBy);
+        }
+
+        // SQL Server以外はSELECT句後にLIMIT句を追加
+        if (limit > 0 && dialect != Dialect.SQLSERVER) {
+            sql.append(" ").append(limitClause);
+        }
+
+        return sql.toString();
+    }
+
+    // LIMIT句の構築（提供済み）
     private static String buildLimitClause(Dialect dialect, int limit) {
         switch (dialect) {
             case SQLSERVER:
@@ -870,6 +940,12 @@ public class DbUtil {
             default:
                 return "";
         }
+    }
+
+    // Dialectの自動検出（例: ThreadLocalやDB接続ベースで判定）
+    private static Dialect detectDialect() {
+        // ユーザーの環境に応じて適切に実装（以下は仮）
+        return Dialect.SQLSERVER;
     }
 
     /**
@@ -893,57 +969,12 @@ public class DbUtil {
     }
 
     /**
-     * 単一レコードをMap形式で指定テーブルに挿入します。
-     *
-     * @param conn   DB接続（null可。nullの場合は {@link DbConfigLoader} から取得）
-     * @param table  対象テーブル名
-     * @param data   挿入するカラムと値のMap
-     * @return 挿入件数（通常は1）
-     * @throws SQLException SQL実行時の例外
-     */
-    public static int insertByMapEx(Connection conn, String table, Map<String, Object> data) throws SQLException, ClassNotFoundException {
-        conn = getConnectionIfNull(conn);
-        Dialect dialect = detectDialect(conn);
-        List<String> columns = new ArrayList<>(data.keySet());
-        String sql = buildInsertSQL(table, columns, dialect);
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            setParams(ps, columns.stream().map(data::get).toArray());
-            return ps.executeUpdate();
-        }
-    }
-
-    /**
-     * 単一レコードをMap形式で指定テーブルに更新します。
-     *
-     * @param conn       DB接続（null可。nullの場合は {@link DbConfigLoader} から取得）
-     * @param table      対象テーブル名
-     * @param data       更新対象のデータ（カラム名→値）
-     * @param columns    SET対象カラムリスト（例: Arrays.asList("name", "age")）
-     * @param whereKeys  WHERE句で使用するカラムリスト（例: Arrays.asList("id")）
-     * @return 更新件数（通常は1）
-     * @throws SQLException SQL実行時の例外
-     */
-    public static int updateByMapEx(Connection conn, String table, Map<String, Object> data,
-                                    List<String> columns, List<String> whereKeys) throws SQLException, ClassNotFoundException {
-        conn = getConnectionIfNull(conn);
-        Dialect dialect = detectDialect(conn);
-        String sql = buildUpdateSQL(table, columns, whereKeys, dialect);
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            List<Object> values = new ArrayList<>();
-            for (String col : columns) values.add(data.get(col));
-            for (String key : whereKeys) values.add(data.get(key));
-            setParams(ps, values.toArray());
-            return ps.executeUpdate();
-        }
-    }
-
-    /**
      * 指定テーブルから単一レコードをMap形式で削除します。
      *
-     * @param conn       DB接続（null可。nullの場合は {@link DbConfigLoader} から取得）
-     * @param table      対象テーブル名
-     * @param data       WHERE条件として使用するデータ（カラム名→値）
-     * @param whereKeys  WHERE句に使うキー（例: Arrays.asList("id")）
+     * @param conn      DB接続（null可。nullの場合は {@link DbConfigLoader} から取得）
+     * @param table     対象テーブル名
+     * @param data      WHERE条件として使用するデータ（カラム名→値）
+     * @param whereKeys WHERE句に使うキー（例: Arrays.asList("id")）
      * @return 削除件数（通常は1）
      * @throws SQLException SQL実行時の例外
      */
@@ -958,6 +989,50 @@ public class DbUtil {
         }
     }
 
+    /**
+     * 任意のテーブルに対して、指定された WHERE 条件に合致するレコード件数を返します。
+     *
+     * @param conn      DBコネクション
+     * @param tableName テーブル名（例: "TK_HENKO2"）
+     * @param whereMap  WHERE条件（キー=カラム名、値=null指定でIS NULL判定）
+     * @return 該当レコード件数
+     * @throws SQLException SQL実行時の例外
+     */
+    public static int getCount(Connection conn, String tableName, Map<String, Object> whereMap) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) AS CNT FROM ").append(tableName);
+        StringBuilder whereClause = new StringBuilder();
+        newLine:
+        if (whereMap != null && !whereMap.isEmpty()) {
+            sql.append(" WHERE ");
+            boolean first = true;
+            for (Map.Entry<String, Object> entry : whereMap.entrySet()) {
+                if (!first) whereClause.append(" AND ");
+                String column = entry.getKey();
+                Object value = entry.getValue();
+                if (value == null) {
+                    whereClause.append(column).append(" IS NULL");
+                } else {
+                    whereClause.append(column).append(" = ?");
+                }
+                first = false;
+            }
+            sql.append(whereClause);
+        }
 
+        try (PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            int index = 1;
+            for (Object value : whereMap.values()) {
+                if (value != null) {
+                    ps.setObject(index++, value);
+                }
+            }
 
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("CNT");
+                }
+                return 0;
+            }
+        }
+    }
 }
