@@ -1,15 +1,18 @@
 package jp.co.technopro.talon.logic.Gojo;
 
-import jp.co.technopro.talon.dto.TalonParamDto;
+import jp.co.technopro.logger.TalonLogger;
+import jp.co.technopro.talon.dto.common.EventResultDto;
+import jp.co.technopro.talon.dto.common.TalonParamDto;
 import jp.co.technopro.talon.dto.gojo.TkMemberDto;
+import jp.co.technopro.talon.dto.gojo.YotakuKingakuDto;
 import jp.co.technopro.talon.dto.gojo.YotakukinShiharaiRirekiDto;
-import jp.co.technopro.talon.logic.ExecutableLogic;
+import jp.co.technopro.talon.logic.common.ExecutableLogic;
 import jp.co.technopro.talon.logic.Gojo.yotaku.YotakukinContext;
 import jp.co.technopro.talon.logic.Gojo.yotaku.strategy.YotakukinStrategyFactory;
-import jp.co.technopro.talon.sql.SqlLoader;
-import jp.co.technopro.talon.util.DbUtil;
-import jp.co.technopro.talon.util.SafeMapAccessUtil;
-import jp.co.technopro.talon.util.StringCheckUtil;
+import jp.co.technopro.talon.sql.common.SqlLoader;
+import jp.co.technopro.talon.util.common.DbUtil;
+import jp.co.technopro.talon.util.common.SafeMapAccessUtil;
+import jp.co.technopro.talon.util.common.StringCheckUtil;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -18,24 +21,24 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 
-import static jp.co.technopro.talon.consts.EventId.*;
-import static jp.co.technopro.talon.consts.Messages.*;
-import static jp.co.technopro.talon.consts.ParamKey.*;
-import static jp.co.technopro.talon.consts.SqlXmlPath.SQL_YOTAKU;
-import static jp.co.technopro.talon.consts.TableName.TABLE_TK_T_YOTEKUKIN_YOTEI;
-import static jp.co.technopro.talon.consts.TableName.TABLE_TK_YOTAKU;
-import static jp.co.technopro.talon.util.DbUtil.*;
-import static jp.co.technopro.talon.util.GojoUtil.*;
-import static jp.co.technopro.talon.util.LogicUtil.buildResult;
-import static jp.co.technopro.talon.util.StringUtil.isNullOrEmpty;
+import static jp.co.technopro.talon.consts.Gojo.GojoEventIdConst.*;
+import static jp.co.technopro.talon.consts.Gojo.GojoMessagesConst.*;
+import static jp.co.technopro.talon.consts.Gojo.GojoMapKeyConst.*;
+import static jp.co.technopro.talon.consts.Gojo.GojoSqlXmlPathConst.SQL_GOJO_YOTAKU;
+import static jp.co.technopro.talon.consts.Gojo.GojoTableNameConst.TABLE_TK_T_YOTEKUKIN_YOTEI;
+import static jp.co.technopro.talon.consts.Gojo.GojoTableNameConst.TABLE_TK_YOTAKU;
+import static jp.co.technopro.talon.util.Gojo.GojoCalcUtil.getBigDecimal;
+import static jp.co.technopro.talon.util.common.DbUtil.*;
+import static jp.co.technopro.talon.util.Gojo.GojoDbUtil.*;
+import static jp.co.technopro.talon.util.common.StringUtil.isNullOrEmpty;
 
 
 public class YotakuService implements ExecutableLogic {
 
-    private final SqlLoader sqlLoader = new SqlLoader(SQL_YOTAKU);
+    private final SqlLoader sqlLoader = new SqlLoader(SQL_GOJO_YOTAKU);
 
     @Override
-    public Map<String, Object>  run(Connection conn, TalonParamDto paramDto) throws SQLException {
+    public EventResultDto run(Connection conn, TalonParamDto paramDto) throws SQLException {
         try {
             String eventId = paramDto.getEventId();
             switch (eventId) {
@@ -52,47 +55,63 @@ public class YotakuService implements ExecutableLogic {
                     return calcYotakukin(conn, paramDto);
 
                 default:
-                    return buildResult(false, "未対応のイベントID: " + eventId);
+                    return EventResultDto.error("未対応のイベントID: " + eventId);
             }
         } catch (Exception e) {
-            return buildResult(false, "処理中にエラーが発生しました: " + e.getMessage());
+            return EventResultDto.error("処理中にエラーが発生しました: " + e.getMessage());
+
         }
     }
 
     /**
      * 預託金・弔慰金の支給額を計算し、TK_MEMBERに反映します。
      *
-     * <p>
-     * 指定されたTK_NOと退職区分（本人・配偶者）に基づいて、
-     * 予め定義されたマスタロジック（CALC_YOTAKUKIN）で金額を算出し、
-     * TK_MEMBERテーブルの該当項目を更新します。
-     * </p>
-     *
-     * <p>
-     * 取得データが存在しない、または金額がすべて0である場合は、
-     * 初期化として全て0で登録します。
-     * </p>
-     *
      * @param conn     DBコネクション（autoCommit=false推奨）
      * @param paramDto パラメータDTO（targetDataに TK_NO, HON_TAISYOKU_CD, HAI_TAISYOKU_CD を含む必要あり）
-     * @return 処理結果Map（success: true/false, message: 処理結果）
+     * @return 処理結果（正常終了時は OK）
      * @throws SQLException SQL実行時にエラーが発生した場合
      */
-    public Map<String, Object> calcYotakukin(Connection conn, TalonParamDto paramDto) throws SQLException {
-
+    public EventResultDto calcYotakukin(Connection conn, TalonParamDto paramDto) throws SQLException {
         Map<String, Object> paramMap = paramDto.getTargetData();
         String tkNo = (String) paramMap.get(MAP_KEY_TK_NO);
         String honCd = (String) paramMap.get(MAP_KEY_HON_TAISYOKU_CD);
         String haiCd = (String) paramMap.get(MAP_KEY_HAI_TAISYOKU_CD);
 
-        // ① 預託金予定を取得
-        String selectSql = sqlLoader.get("CALC_YOTAKUKIN");
+        YotakuKingakuDto dto = calcYotakukinAmount(conn, tkNo, honCd, haiCd);
 
-        BigDecimal honYotaku = BigDecimal.ZERO;
-        BigDecimal haiYotaku = BigDecimal.ZERO;
-        BigDecimal honTyoi = BigDecimal.ZERO;
-        BigDecimal haiTyoi = BigDecimal.ZERO;
-        boolean hasData = false;
+        // 初期化対象かどうか判定
+        if (dto.isAllZero()) {
+            dto = new YotakuKingakuDto(); // 全てゼロで初期化
+        }
+
+        // TK_MEMBER更新
+        String updateSql = sqlLoader.get("UPDATE_YOTAKU");
+
+        try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
+            ps.setBigDecimal(1, dto.getHonYotaku());
+            ps.setBigDecimal(2, dto.getHonTyoi());
+            ps.setBigDecimal(3, dto.getHaiYotaku());
+            ps.setBigDecimal(4, dto.getHaiTyoi());
+            ps.setString(5, tkNo);
+            ps.executeUpdate();
+        }
+
+        return EventResultDto.ok();
+    }
+
+    /**
+     * 預託金・弔慰金の支給額を計算し、DTOとして返します。
+     *
+     * @param conn     DBコネクション
+     * @param tkNo     特別会員番号
+     * @param honCd    本人退職区分コード
+     * @param haiCd    配偶者退職区分コード
+     * @return {@link YotakuKingakuDto} 金額DTO
+     * @throws SQLException SQL実行時エラー
+     */
+    private YotakuKingakuDto calcYotakukinAmount(Connection conn, String tkNo, String honCd, String haiCd) throws SQLException {
+        YotakuKingakuDto dto = new YotakuKingakuDto();
+        String selectSql = sqlLoader.get("CALC_YOTAKUKIN");
 
         try (PreparedStatement ps = conn.prepareStatement(selectSql)) {
             ps.setString(1, tkNo);
@@ -101,73 +120,93 @@ public class YotakuService implements ExecutableLogic {
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    hasData = true;
-                    honYotaku = Optional.ofNullable(rs.getBigDecimal("HON_YOTAKUKIN_KINGAKU")).orElse(BigDecimal.ZERO);
-                    haiYotaku = Optional.ofNullable(rs.getBigDecimal("HAI_YOTAKUKIN_KINGAKU")).orElse(BigDecimal.ZERO);
-                    honTyoi = Optional.ofNullable(rs.getBigDecimal("HON_TYOIKIN_KINGAKU")).orElse(BigDecimal.ZERO);
-                    haiTyoi = Optional.ofNullable(rs.getBigDecimal("HAI_TYOIKIN_KINGAKU")).orElse(BigDecimal.ZERO);
+                    dto.setHonYotaku(rs.getBigDecimal("HON_YOTAKUKIN_KINGAKU"));
+                    dto.setHaiYotaku(rs.getBigDecimal("HAI_YOTAKUKIN_KINGAKU"));
+                    dto.setHonTyoi(rs.getBigDecimal("HON_TYOIKIN_KINGAKU"));
+                    dto.setHaiTyoi(rs.getBigDecimal("HAI_TYOIKIN_KINGAKU"));
                 }
             }
         }
 
-        // 実データが有意でない場合はゼロ初期化として扱う
-        boolean shouldUpdate = hasData && (
-                honYotaku.compareTo(BigDecimal.ZERO) != 0 ||
-                        haiYotaku.compareTo(BigDecimal.ZERO) != 0 ||
-                        honTyoi.compareTo(BigDecimal.ZERO) != 0 ||
-                        haiTyoi.compareTo(BigDecimal.ZERO) != 0
-        );
+        return dto;
+    }
 
-        if (!shouldUpdate) {
-            honYotaku = BigDecimal.ZERO;
-            haiYotaku = BigDecimal.ZERO;
-            honTyoi = BigDecimal.ZERO;
-            haiTyoi = BigDecimal.ZERO;
-        }
 
-        // ② TK_MEMBER を更新
+    /**
+     * TK_MEMBER テーブルに対して支給金額を更新します。
+     *
+     * @param conn    DBコネクション
+     * @param tkNo    会員番号
+     * @param kingaku 支給金額情報
+     * @throws SQLException SQL実行時の例外
+     */
+    private void updateTkMember(Connection conn, String tkNo, YotakuKingakuDto kingaku) throws SQLException {
         String updateSql = sqlLoader.get("UPDATE_YOTAKU");
 
-        try (PreparedStatement psUpd = conn.prepareStatement(updateSql)) {
-            psUpd.setBigDecimal(1, honYotaku);
-            psUpd.setBigDecimal(2, honTyoi);
-            psUpd.setBigDecimal(3, haiYotaku);
-            psUpd.setBigDecimal(4, haiTyoi);
-            psUpd.setString(5, tkNo);
-            psUpd.executeUpdate();
+        try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
+            ps.setBigDecimal(1, kingaku.getHonYotaku());
+            ps.setBigDecimal(2, kingaku.getHonTyoi());
+            ps.setBigDecimal(3, kingaku.getHaiYotaku());
+            ps.setBigDecimal(4, kingaku.getHaiTyoi());
+            ps.setString(5, tkNo);
+            ps.executeUpdate();
         }
-
-        return buildResult(true, MSG_SUCCESS);
     }
+
+
     /**
      * 預託情報の初期登録処理を実行します。
-     * TK_NOおよびSHORI_TUKIをキーにTK_YOTAKUテーブルを確認し、該当レコードが存在しない場合に限り、
-     * 与託情報の登録処理を行います。
      *
-     * @param conn     DBコネクション
-     * @param paramDto TK_NO, SHORI_TUKI を含むパラメータマップ
-     * @return
-     * @throws SQLException DBアクセスエラー
+     * <p>
+     * TK_NOおよびSHORI_TUKIをキーに、TK_YOTAKU テーブルの存在チェックを行い、
+     * レコードが存在しない場合のみ、{@code insTkYotaku} により新規登録を行います。
+     * </p>
+     *
+     * @param conn     DBコネクション（トランザクション管理は呼び出し元に委ねます）
+     * @param paramDto 条件データを含むパラメータDTO（TK_NO, SHORI_TUKI が必要）
+     * @return 登録が発生した場合も含めて成功時は {@code EventResultDto.ok()} を返します。
+     *         必須項目不足時は {@code EventResultDto.error(...)} を返します。
+     * @throws SQLException DB操作中に発生したエラー
      */
-    public Map<String, Object> setYotakuInit(Connection conn, TalonParamDto paramDto) throws SQLException {
-
+    public EventResultDto setYotakuInit(Connection conn, TalonParamDto paramDto) throws SQLException {
         Map<String, Object> paramMap = paramDto.getConditionData();
+        TalonLogger.logInfo(paramDto, "検索マップ取得");
 
         String tkNo = SafeMapAccessUtil.getString(paramMap, MAP_KEY_TK_NO);
         String shoriTuki = SafeMapAccessUtil.getString(paramMap, MAP_KEY_SHORI_TUKI);
 
-        if (StringCheckUtil.isNullOrEmpty(tkNo) || StringCheckUtil.isNullOrEmpty(shoriTuki)) return buildResult(false, MSG_NON_TK_OBJ);
+        if (StringCheckUtil.isNullOrEmpty(tkNo) || StringCheckUtil.isNullOrEmpty(shoriTuki)) {
+            return EventResultDto.error(MSG_NON_TK_OBJ);
+        }
 
-        Map<String, Object> whereMaps = new HashMap<>();
-        whereMaps.put(MAP_KEY_TK_NO, tkNo);
-        whereMaps.put(MAP_KEY_SHORI_TUKI, shoriTuki);
+        if (isYotakuAlreadyRegistered(conn, tkNo, shoriTuki, paramDto.getCompanyCode())) {
+            return EventResultDto.ok();
+        }
 
-        if (!DbUtil.isTableEmpty(conn, TABLE_TK_YOTAKU, whereMaps)) return buildResult(true, MSG_SUCCESS);
+        insTkYotaku(conn, paramDto.getCompanyCode(), tkNo, shoriTuki);
+        TalonLogger.logInfo(paramDto, "預託情報登録完了");
 
-        insTkYotaku(conn, tkNo, shoriTuki);
-
-        return buildResult(true, MSG_SUCCESS);
+        return EventResultDto.ok();
     }
+
+    /**
+     * TK_YOTAKU テーブルに該当レコードがすでに存在するかを判定します。
+     *
+     * @param conn      DBコネクション
+     * @param tkNo      会員番号（TK_NO）
+     * @param shoriTuki 処理月
+     * @param companyCd 会社コード（DB接続識別用）
+     * @return レコードが存在する場合は true、未登録の場合は false
+     * @throws SQLException DBアクセスエラー
+     */
+    private boolean isYotakuAlreadyRegistered(Connection conn, String tkNo, String shoriTuki, String companyCd) throws SQLException {
+        Map<String, Object> where = Map.of(
+                MAP_KEY_TK_NO, tkNo,
+                MAP_KEY_SHORI_TUKI, shoriTuki
+        );
+        return !DbUtil.isTableEmpty(conn, TABLE_TK_YOTAKU, where, companyCd);
+    }
+
 
     /**
      * 預託金予定情報（TK_T_YOTEKUKIN_YOTEI）を生成・再計算して登録します。
@@ -186,65 +225,87 @@ public class YotakuService implements ExecutableLogic {
      * @throws SQLException           SQL操作中の例外（SELECT/DELETE/INSERT等）
      * @throws ClassNotFoundException JDBCドライバが見つからない場合などの例外
      */
-    public Map<String, Object> setYotakukinYotei(Connection conn, TalonParamDto paramDto) throws SQLException, ClassNotFoundException {
+    public EventResultDto setYotakukinYotei(Connection conn, TalonParamDto paramDto) throws Exception {
+        String tkNo = extractTkNo(paramDto);
+        if (isNullOrEmpty(tkNo)) return EventResultDto.error(MSG_NON_TK_NO);
 
-        Map<String, Object> params = paramDto.getConditionData();
+        TkMemberDto memberDto = setTkMemberDto(conn, tkNo);
+        if (memberDto == null) return EventResultDto.error(MSG_NON_TK_OBJ);
 
-        String TK_NO = params.get("TK_NO").toString();
-        if (isNullOrEmpty(TK_NO)) return buildResult(false, MSG_NON_TK_NO);
+        List<Map<String, Object>> yoteiMstList = getMstYotakukin(conn, paramDto);
+        deleteExistingYotei(conn, tkNo, paramDto.getCompanyCode());
 
-        TkMemberDto tkMemberDto  = setTkMemberDto(TK_NO);
+        YotakukinContext ctx = buildYotakukinContext(memberDto);
 
-        if (tkMemberDto == null) return buildResult(false, MSG_NON_TK_OBJ);
-        YotakukinShiharaiRirekiDto yotakukinShiharaiRirekiDto = tkMemberDto.getYotakukinShiharaiRirekiDto();
-        List<Map<String, Object>> yotakukinYoteiMstMapList = getMstYotakukin(conn);
-        delYotakuyotei(conn, TK_NO);
+        insertYoteiRecords(conn, paramDto.getCompanyCode(), tkNo, yoteiMstList, ctx);
 
-        String honTaisyoku = tkMemberDto.getHonTaisyokuCd();
-        String haiTaisyoku = tkMemberDto.getHaiTaisyokuCd();
+        return EventResultDto.ok();
+    }
 
-        BigDecimal honYotakukin = getBigDecimal(tkMemberDto.getHonYotakukin());
-        BigDecimal honYotakukinShiharai = getBigDecimal(yotakukinShiharaiRirekiDto.getHonYotakukin());
+    /**
+     * DTOから TK_NO を抽出します。
+     *
+     * @param paramDto 条件データを含むパラメータDTO
+     * @return TK_NO（nullの場合もあり）
+     */
+    private String extractTkNo(TalonParamDto paramDto) {
+        Object tkNoObj = paramDto.getConditionData().get(MAP_KEY_TK_NO);
+        return tkNoObj != null ? tkNoObj.toString() : null;
+    }
 
-        BigDecimal haiYotakukin = getBigDecimal(tkMemberDto.getHaiYotakukin());
-        BigDecimal haiYotakukinShiharai = getBigDecimal(yotakukinShiharaiRirekiDto.getHaiYotakukin());
+    /**
+     * 既存の預託金予定情報（TK_T_YOTEKUKIN_YOTEI）を削除します。
+     *
+     * @param conn      DB接続（トランザクション内で利用）
+     * @param tkNo      削除対象の会員番号
+     * @param companyCd DB接続の会社コード
+     * @throws SQLException 削除処理中の例外
+     */
+    private void deleteExistingYotei(Connection conn, String tkNo, String companyCd) throws SQLException {
+        delYotakuyotei(conn, tkNo, companyCd);
+    }
 
-        YotakukinContext ctx = new YotakukinContext(honTaisyoku, haiTaisyoku,
-                honYotakukin, honYotakukinShiharai,
-                haiYotakukin, haiYotakukinShiharai);
+    /**
+     * 預託金計算用のコンテキストオブジェクトを生成します。
+     * TK_MEMBER と支払履歴DTOを元に残額等をセットします。
+     *
+     * @param dto 会員情報DTO
+     * @return 計算に使用する文脈オブジェクト
+     */
+    private YotakukinContext buildYotakukinContext(TkMemberDto dto) {
+        YotakukinShiharaiRirekiDto paid = dto.getYotakukinShiharaiRirekiDto();
+        return new YotakukinContext(
+                dto.getHonTaisyokuCd(),
+                dto.getHaiTaisyokuCd(),
+                getBigDecimal(dto.getHonYotakukin()),
+                getBigDecimal(paid.getHonYotakukin()),
+                getBigDecimal(dto.getHaiYotakukin()),
+                getBigDecimal(paid.getHaiYotakukin())
+        );
+    }
 
-        for (Map<String, Object> map : yotakukinYoteiMstMapList) {
-            String ptnCd = String.valueOf(map.get("PTN_CD"));
+    /**
+     * 預託金予定情報を戦略ロジックに従って処理し、テーブルにINSERTします。
+     *
+     * @param conn         DB接続（トランザクション内で利用）
+     * @param companyCd    接続に使用する会社コード
+     * @param tkNo         対象の会員番号
+     * @param yoteiMstList 預託金予定マスタの行リスト
+     * @param ctx          預託金計算文脈
+     * @throws SQLException INSERT処理で発生した例外
+     */
+    private void insertYoteiRecords(Connection conn, String companyCd, String tkNo,
+                                    List<Map<String, Object>> yoteiMstList, YotakukinContext ctx) throws SQLException {
+
+        for (Map<String, Object> row : yoteiMstList) {
+            String ptnCd = String.valueOf(row.get("PTN_CD"));
             if (isNullOrEmpty(ptnCd)) continue;
 
-            YotakukinStrategyFactory.get(ptnCd).ifPresent(strategy -> strategy.apply(map, ctx));
+            YotakukinStrategyFactory.get(ptnCd).ifPresent(strategy -> strategy.apply(row, ctx));
 
-            map.put(MAP_KEY_TK_NO, TK_NO);
-            insertByMapEx(conn, TABLE_TK_T_YOTEKUKIN_YOTEI, map, true);
+            row.put(MAP_KEY_TK_NO, tkNo);
+            insertByMapEx(conn, companyCd, TABLE_TK_T_YOTEKUKIN_YOTEI, row, false);
         }
-
-        return buildResult(true, MSG_SUCCESS);
-
     }
 
-    public List<Map<String, Object>> getMstYotakukin(Connection conn) throws SQLException {
-
-        return DbUtil.selectListAsMap(conn, "SELECT * FROM TK_M_YOTEKUKIN_YOTEI", new Object[0]);
-    }
-
-    public void delYotakuyotei(Connection conn, String tk_no) throws SQLException {
-
-        DbUtil.delete(conn, "DELETE FROM TK_T_YOTEKUKIN_YOTEI WHERE TK_NO = ?", tk_no);
-    }
-
-    public void insTkYotaku(Connection conn, String tk_no, String shoriTuki) throws SQLException {
-
-        Map<String, Object> insMap = new HashMap<>();
-        insMap.put(MAP_KEY_TK_NO, tk_no);
-        insMap.put(MAP_KEY_SHORI_TUKI, shoriTuki);
-
-        DbUtil.insertByMap(conn, TABLE_TK_YOTAKU, insMap,
-                Arrays.asList(MAP_KEY_TK_NO, MAP_KEY_SHORI_TUKI));
-
-    }
 }

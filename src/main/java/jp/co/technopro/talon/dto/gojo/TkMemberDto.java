@@ -229,6 +229,8 @@ public class TkMemberDto {
 
     private YotakukinShiharaiRirekiDto yotakukinShiharaiRirekiDto;
 
+    private String shoriTuki;
+
     public String getHaiKanyuUmu() {
         return haiKanyuUmu;
     }
@@ -835,5 +837,13 @@ public class TkMemberDto {
 
     public void setHaiTaisyokuCd(String haiTaisyokuCd) {
         this.haiTaisyokuCd = haiTaisyokuCd;
+    }
+
+    public String getShoriTuki() {
+        return shoriTuki;
+    }
+
+    public void setShoriTuki(String shoriTuki) {
+        this.shoriTuki = shoriTuki;
     }
 }

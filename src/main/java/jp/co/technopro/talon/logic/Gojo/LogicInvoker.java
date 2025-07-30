@@ -1,18 +1,17 @@
 package jp.co.technopro.talon.logic.Gojo;
 
-import jp.co.technopro.talon.dto.TalonParamDto;
+import jp.co.technopro.talon.dto.common.EventResultDto;
+import jp.co.technopro.talon.dto.common.TalonParamDto;
 import jp.co.technopro.talon.mapper.TalonParamMapper;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.Map;
 
-import static jp.co.technopro.talon.consts.LogicId.*;
-import static jp.co.technopro.talon.util.LogicUtil.buildResult;
+import static jp.co.technopro.talon.consts.Gojo.GojoLogicIdConst.*;
 
 public class LogicInvoker {
 
-    public Map<String, Object> execute(Connection conn, Map<String, Object> paramMap) throws SQLException {
+    public EventResultDto execute(Connection conn, Map<String, Object> paramMap) throws Exception {
 
         TalonParamDto paramDto = TalonParamMapper.fromMap(paramMap);
         String logicId = paramDto.getLogicId();
@@ -35,7 +34,7 @@ public class LogicInvoker {
             case COMMON:
                 return new Tkc001Service().run(conn, paramDto);
             default:
-                return buildResult(false, "不明なロジックID: " + logicId);
+                return EventResultDto.error("不明なロジックID: " + logicId);
         }
     }
 }

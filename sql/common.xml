@@ -14,8 +14,10 @@
 
     <!-- TPI_M_JAVA_LOGIC -->
     <select id="TPI_M_JAVA_LOGIC" resultType="map">
+        <![CDATA[
         SELECT * FROM TPI_M_JAVA_LOGIC
         WHERE LOGIC_ID = ?
+        ]]>
     </select>
 
     <select id="CALC_YOTAKUKIN">

@@ -1,31 +1,29 @@
 package jp.co.technopro.talon.logic.Gojo;
 
-import jp.co.technopro.talon.dto.TalonParamDto;
-import jp.co.technopro.talon.logic.ExecutableLogic;
-import jp.co.technopro.talon.sql.SqlLoader;
-import jp.co.technopro.talon.util.DbUtil;
+import jp.co.technopro.talon.dto.common.EventResultDto;
+import jp.co.technopro.talon.dto.common.TalonParamDto;
+import jp.co.technopro.talon.logic.common.ExecutableLogic;
+import jp.co.technopro.talon.sql.common.SqlLoader;
+import jp.co.technopro.talon.util.common.DbUtil;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.*;
 
-import static jp.co.technopro.talon.consts.CodeValues.TK_DVS_SHINKI;
-import static jp.co.technopro.talon.consts.EventId.*;
-import static jp.co.technopro.talon.consts.Messages.*;
-import static jp.co.technopro.talon.consts.ParamKey.*;
-import static jp.co.technopro.talon.consts.SqlXmlPath.*;
-import static jp.co.technopro.talon.consts.TableName.*;
-import static jp.co.technopro.talon.util.DbUtil.*;
-import static jp.co.technopro.talon.util.LogicUtil.buildResult;
-import static jp.co.technopro.talon.util.LogicUtil.updateTkc001;
-
+import static jp.co.technopro.talon.consts.Gojo.GojoCodeValuesConst.TK_DVS_SHINKI;
+import static jp.co.technopro.talon.consts.Gojo.GojoEventIdConst.*;
+import static jp.co.technopro.talon.consts.Gojo.GojoMessagesConst.*;
+import static jp.co.technopro.talon.consts.Gojo.GojoMapKeyConst.*;
+import static jp.co.technopro.talon.consts.Gojo.GojoSqlXmlPathConst.SQL_GOJO_SHINKI;
+import static jp.co.technopro.talon.consts.Gojo.GojoTableNameConst.*;
+import static jp.co.technopro.talon.util.Gojo.GojoDbUtil.*;
+import static jp.co.technopro.talon.util.Gojo.GojoLogicUtil.getShoriTukiFromConditionData;
+import static jp.co.technopro.talon.util.common.DbUtil.*;
 
 public class ShinkiService implements ExecutableLogic {
 
-    private final SqlLoader sqlLoader = new SqlLoader(SQL_SHINKI);
-
     @Override
-    public Map<String, Object> run(Connection conn, TalonParamDto paramDto) throws SQLException {
+    public EventResultDto run(Connection conn, TalonParamDto paramDto) throws SQLException {
         String eventId = paramDto.getEventId();
         switch (eventId) {
             case SHINKI_GENSHOKU_CHK:
@@ -38,72 +36,41 @@ public class ShinkiService implements ExecutableLogic {
                 return shinkiSimeRenkei(conn, paramDto);
 
             default:
-                return buildResult(false, "未対応のイベントID: " + eventId);
+                return EventResultDto.error("未対応のイベントID: " + eventId);
         }
     }
 
     /**
      * TK_SHINKI テーブルから指定された処理月のデータを TK_MEMBER に連携します。
-     * <p>
-     * TK_NO をキーに TK_MEMBER の既存レコードを削除した上で、TK_SHINKI の内容を挿入します。<br>
-     * 各レコードの挿入処理はトランザクション内で行われ、失敗時はロールバックされます。
-     * </p>
      *
      * @param conn     DBコネクション（autoCommit=false 推奨）
-     * @param paramDto パラメータ（MAP_KEY_SHORI_TUKI を含む必要あり）
-     * @return 結果Map（success=true/false、messageあり）
+     * @param paramDto 処理対象 DTO（SHORI_TUKI を含む必要あり）
+     * @return 処理結果（success=true/false、メッセージ付き）
      * @throws SQLException DBアクセス時のエラー
      */
-    public Map<String, Object> shinkiSimeRenkei(Connection conn, TalonParamDto paramDto) throws SQLException {
-
-        Map<String, Object> params = paramDto.getConditionData();
-
-        String shoriTuki = (String) params.get(MAP_KEY_SHORI_TUKI);
-        if (shoriTuki == null || shoriTuki.isBlank()) {
-            return buildResult(false, MSG_NON_SHORI_TUKI);
+    public EventResultDto shinkiSimeRenkei(Connection conn, TalonParamDto paramDto) throws SQLException {
+        String shoriTuki = getShoriTukiFromConditionData(paramDto);
+        if (shoriTuki == null) {
+            return EventResultDto.error(MSG_NON_SHORI_TUKI);
         }
 
-        Map<String, Object> whereMap = new HashMap<>();
-        whereMap.put(MAP_KEY_SHORI_TUKI, shoriTuki);
-
-        List<Map<String, Object>> shinkiList = selectList(conn, TABLE_TK_SHINKI, whereMap);
-
+        List<Map<String, Object>> shinkiList = loadShinkiData(conn, shoriTuki);
         if (shinkiList.isEmpty()) {
-            return buildResult(false, "新規登録の処理対象データは存在しません。");
+            return EventResultDto.error("新規登録の処理対象データは存在しません。");
         }
 
         try {
             for (Map<String, Object> record : shinkiList) {
-                String tkNo = (String) record.get(MAP_KEY_TK_NO);
-
-                // 既存レコード削除
-                deleteTkMember(conn, tkNo);
-
-                // 新規挿入（false=PK重複時は例外スロー）
-                insertByMapEx(conn, TABLE_TK_MEMBER, record, false);
+                processShinkiRecord(conn, paramDto.getCompanyCode(), record);
             }
 
             updateTkc001(conn, shoriTuki, TK_DVS_SHINKI);
-
-            return buildResult(true, "処理が正常に完了しました。件数: " + shinkiList.size());
+            return EventResultDto.ok();
 
         } catch (SQLException e) {
-            conn.rollback(); // 明示的にロールバック（呼び出し元がトランザクション制御する場合不要）
-            e.printStackTrace();
-            return buildResult(false, "処理中にエラーが発生しました: " + e.getMessage());
+            conn.rollback();
+            return EventResultDto.error("処理中にエラーが発生しました: " + e.getMessage());
         }
-
-    }
-
-    /**
-     * TK_MEMBER テーブルから指定された TK_NO を削除します。
-     *
-     * @param conn DB接続
-     * @param tkNo 対象会員番号
-     * @throws SQLException SQL例外が発生した場合
-     */
-    private void deleteTkMember(Connection conn, String tkNo) throws SQLException {
-        DbUtil.delete(conn, "DELETE FROM TK_MEMBER WHERE TK_NO = ?", tkNo);
     }
 
     /**
@@ -117,24 +84,34 @@ public class ShinkiService implements ExecutableLogic {
      * @return 成功時は true、退会していない場合は false とエラーメッセージ
      * @throws SQLException DBアクセスエラー
      */
-    public Map<String, Object> chkGensyoku(Connection conn, TalonParamDto paramDto) throws SQLException {
+    public EventResultDto chkGensyoku(Connection conn, TalonParamDto paramDto) throws SQLException {
 
         Map<String, Object> params = paramDto.getTargetData();
 
-        int no = (int) params.get(MAP_KEY_NO);
+        Object noObj = params.get(MAP_KEY_NO);
+        if (noObj == null) {
+            return EventResultDto.error("会員番号（NO）が指定されていません。");
+        }
+
+        int no;
+        try {
+            no = Integer.parseInt(noObj.toString());
+        } catch (NumberFormatException e) {
+            return EventResultDto.error("会員番号（NO）が数値でありません。");
+        }
 
         // 退会していないデータが存在するかを確認
         Map<String, Object> whereMap = new HashMap<>();
         whereMap.put(MAP_KEY_NO, no);
         whereMap.put(MAP_GOJYO_TAIKAI_CD, null);  // null指定 → IS NULL 検索
 
-        boolean isTaikai = isTableEmpty(conn, TABLE_GEN_T_KAIIN, whereMap);
+        boolean isTaikai = isTableEmpty(conn, TABLE_GEN_T_KAIIN, whereMap, paramDto.getCompanyCode());
 
         if (!isTaikai) {
-            return buildResult(false, "現職会員番号: " + no + " は未退会です。");
+            return EventResultDto.error("現職会員番号: " + no + " は未退会です。");
         }
 
-        return buildResult(true, "");
+        return EventResultDto.ok();
     }
 
     /**
@@ -145,19 +122,31 @@ public class ShinkiService implements ExecutableLogic {
      * @return 重複があれば success=false とエラーメッセージ、なければ success=true と正常メッセージを含む結果Map
      * @throws SQLException DBアクセスエラーが発生した場合
      */
-    public Map<String, Object> chkDuplicate(Connection conn, TalonParamDto paramDto) throws SQLException {
+    public EventResultDto chkDuplicate(Connection conn, TalonParamDto paramDto) throws SQLException {
 
         Map<String, Object> params = paramDto.getTargetData();
-        int no = (int) params.get(MAP_KEY_NO);
+        Object noObj = params.get(MAP_KEY_NO);
+        if (noObj == null) {
+
+            return EventResultDto.error("会員番号（NO）が指定されていません。");
+        }
+
+        int no;
+        try {
+            no = Integer.parseInt(noObj.toString());
+        } catch (NumberFormatException e) {
+            return EventResultDto.error("会員番号（NO）が数値でありません。");
+        }
         Map<String, Object> whereMap = new HashMap<>();
         whereMap.put(MAP_KEY_NO, no);
 
-        boolean duplicate = !isTableEmpty(conn, TABLE_TK_SHINKI, whereMap);
+        boolean duplicate = !isTableEmpty(conn, TABLE_TK_SHINKI, whereMap, paramDto.getCompanyCode());
 
         if (duplicate) {
-            return buildResult(false, MSG_DUPLICATE_GENSYOKU);
+            return EventResultDto.error(MSG_DUPLICATE_GENSYOKU);
+
         } else {
-            return buildResult(true, "");
+            return EventResultDto.ok();
         }
     }
 

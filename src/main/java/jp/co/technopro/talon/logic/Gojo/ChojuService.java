@@ -1,14 +1,14 @@
 package jp.co.technopro.talon.logic.Gojo;
 
-import jp.co.technopro.talon.dto.TalonParamDto;
-import jp.co.technopro.talon.logic.ExecutableLogic;
+import jp.co.technopro.talon.dto.common.EventResultDto;
+import jp.co.technopro.talon.dto.common.TalonParamDto;
+import jp.co.technopro.talon.logic.common.ExecutableLogic;
 
 import java.sql.Connection;
-import java.util.Map;
 
 public class ChojuService implements ExecutableLogic {
 
-    public Map<String, Object> run(Connection conn, TalonParamDto paramDto) {
+    public EventResultDto run(Connection conn, TalonParamDto paramDto) {
 
 
         return null;

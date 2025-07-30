@@ -1,6 +1,6 @@
 package jp.co.technopro.talon.mapper;
 
-import jp.co.technopro.talon.dto.TalonParamDto;
+import jp.co.technopro.talon.dto.common.TalonParamDto;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -11,7 +11,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
-import static jp.co.technopro.talon.consts.MapKeyCommon.*;
+import static jp.co.technopro.talon.consts.tln.TlnMapKeyConst.*;
 
 /**
  * Map形式のデータやResultSetから、DTOオブジェクト（例: {@link TalonParamDto}）へ変換するためのユーティリティクラス。
@@ -50,7 +50,9 @@ public class TalonParamMapper {
         dto.setTlnIsUpdate(Boolean.TRUE.equals(map.get(MAP_KEY_TLN_IS_UPDATE)));
         dto.setTlnIsDelete(Boolean.TRUE.equals(map.get(MAP_KEY_TLN_IS_DELETE)));
         dto.setTlnSession(castList(map.get(MAP_KEY_TLN_SESSION)));
-
+        dto.setLogger(map.get("LOGGER"));
+        dto.setCompanyCode((String) map.get(MAP_KEY_COMPANY_CODE));
+        dto.setCompanyCodeCommon((String) map.get(MAP_KEY_COMPANY_CODE_COMMON));
         // BLOCK1〜BLOCK9 に対応するデータを動的にバインド
         for (int i = 1; i <= 9; i++) {
             Map<String, Object> blockMap = castMap(map.get("BLOCK" + i));
