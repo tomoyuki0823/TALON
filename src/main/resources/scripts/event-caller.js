@@ -1,7 +1,7 @@
 function callEventLogicById(EVENT_ID) {
     var paramMap = new java.util.HashMap();
 
-    var DbTestUtil = Java.type("jp.co.technopro.talon.util.DbTestUtil");
+    var DbTestUtil = Java.type("jp.co.technopro.talon.util.common.DbTestUtil");
     paramMap.put("FUNC_ID", "TK_SHINKI_05");
     paramMap.put("EVENT_ID", "BLOCK_BEFORE");
 
@@ -78,7 +78,7 @@ function callEventLogicById(EVENT_ID) {
     paramMap.put("TARGET_DATA", targetMap);
 
     // DB接続
-    var executorClass = Java.type("jp.co.technopro.talon.logic.EventLogicExecutor");
+    var executorClass = Java.type("jp.co.technopro.talon.logic.common.EventLogicExecutor");
     var conn = DbTestUtil.getTestConnection();
 
     executorClass.executeEventLogic(conn, paramMap);

@@ -7,29 +7,36 @@ import java.util.Map;
  * TALON → Java へのパラメータDTO。
  * BLOCK情報やユーザー情報など、汎用的に受け取る構造。
  */
-public class TalonParamDto {
+public class TalonParamDto extends AbstractTalonDto {
 
-    // === 基本情報 ===
+    // ==============================
+    // 基本情報
+    // ==============================
     private String eventId;
     private String logicId;
     private Map<String, Object> userMap;
 
-    // === データ関連 ===
+    // ==============================
+    // データ関連
+    // ==============================
     private Map<String, Object> targetData;
     private Map<String, Object> conditionData;
     private List<Map<String, Object>> blockMeta;
 
-    private Map<String, Object> block1;
-    private Map<String, Object> block2;
-    private Map<String, Object> block3;
-    private Map<String, Object> block4;
-    private Map<String, Object> block5;
-    private Map<String, Object> block6;
-    private Map<String, Object> block7;
-    private Map<String, Object> block8;
-    private Map<String, Object> block9;
+    private BlockDataDto block1;
+    private BlockDataDto block2;
+    private BlockDataDto block3;
+    private BlockDataDto block4;
+    private BlockDataDto block5;
+    private BlockDataDto block6;
+    private BlockDataDto block7;
+    private BlockDataDto block8;
+    private BlockDataDto block9;
 
-    // === TALON制御関連 ===
+    // ==============================
+    // TALON制御関連
+    // ==============================
+
     /** Talonの実行イベントID（例: "onButton"） */
     private String tlnEventId;
 
@@ -45,13 +52,18 @@ public class TalonParamDto {
     /** Talonのセッション情報 */
     private List<Map<String, Object>> tlnSession;
 
-    // === 環境・識別関連 ===
+    // ==============================
+    // 環境・識別関連
+    // ==============================
     private String buttomId;
     private Object logger;
     private String companyCode;
     private String companyCodeCommon;
 
-    // === Getter / Setter ===
+    // ==============================
+    // Getter / Setter
+    // ==============================
+
     public String getEventId() {
         return eventId;
     }
@@ -100,75 +112,75 @@ public class TalonParamDto {
         this.blockMeta = blockMeta;
     }
 
-    public Map<String, Object> getBlock1() {
+    public BlockDataDto getBlock1() {
         return block1;
     }
 
-    public void setBlock1(Map<String, Object> block1) {
+    public void setBlock1(BlockDataDto block1) {
         this.block1 = block1;
     }
 
-    public Map<String, Object> getBlock2() {
+    public BlockDataDto getBlock2() {
         return block2;
     }
 
-    public void setBlock2(Map<String, Object> block2) {
+    public void setBlock2(BlockDataDto block2) {
         this.block2 = block2;
     }
 
-    public Map<String, Object> getBlock3() {
+    public BlockDataDto getBlock3() {
         return block3;
     }
 
-    public void setBlock3(Map<String, Object> block3) {
+    public void setBlock3(BlockDataDto block3) {
         this.block3 = block3;
     }
 
-    public Map<String, Object> getBlock4() {
+    public BlockDataDto getBlock4() {
         return block4;
     }
 
-    public void setBlock4(Map<String, Object> block4) {
+    public void setBlock4(BlockDataDto block4) {
         this.block4 = block4;
     }
 
-    public Map<String, Object> getBlock5() {
+    public BlockDataDto getBlock5() {
         return block5;
     }
 
-    public void setBlock5(Map<String, Object> block5) {
+    public void setBlock5(BlockDataDto block5) {
         this.block5 = block5;
     }
 
-    public Map<String, Object> getBlock6() {
+    public BlockDataDto getBlock6() {
         return block6;
     }
 
-    public void setBlock6(Map<String, Object> block6) {
+    public void setBlock6(BlockDataDto block6) {
         this.block6 = block6;
     }
 
-    public Map<String, Object> getBlock7() {
+    public BlockDataDto getBlock7() {
         return block7;
     }
 
-    public void setBlock7(Map<String, Object> block7) {
+    public void setBlock7(BlockDataDto block7) {
         this.block7 = block7;
     }
 
-    public Map<String, Object> getBlock8() {
+    public BlockDataDto getBlock8() {
         return block8;
     }
 
-    public void setBlock8(Map<String, Object> block8) {
+    public void setBlock8(BlockDataDto block8) {
         this.block8 = block8;
     }
 
-    public Map<String, Object> getBlock9() {
+    public BlockDataDto getBlock9() {
         return block9;
     }
 
-    public void setBlock9(Map<String, Object> block9) {
+    public void setBlock9(BlockDataDto block9) {
         this.block9 = block9;
     }
 

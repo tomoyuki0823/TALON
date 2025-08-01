@@ -32,4 +32,10 @@ public final class GojoEventIdConst {
     /** 変更本登録（TK_HENKO） */
     public static final String HENKO_HON_TOUROKU = "HON_TOUROKU";
 
+    public static final String HENKO_INIT = "HENKO_INIT";
+
+    /** 支部・市町村別人数集計 データ生成（TK_HENKO_03） */
+    public static final String HENKO03_CREATE = "HENKO03_CREATE";
+
+
 }

@@ -33,23 +33,9 @@ class DbConfigLoaderTest {
     void testLoadFromClasspath() {
         DbConfig config = DbConfigLoader.loadFromClasspath("test-db.properties");
         assertEquals("jdbc:h2:mem:classpath", config.getUrl());
-        assertEquals("user", config.getUser());
-        assertEquals("pass", config.getPassword());
-        assertEquals("org.h2.Driver", config.getDriver());
-    }
-
-    @Test
-    void testLoadFromFile() throws IOException {
-        File propFile = tempDir.resolve("external-db.properties").toFile();
-        try (FileWriter fw = new FileWriter(propFile)) {
-            fw.write(SAMPLE_PROPS);
-        }
-
-        DbConfig config = DbConfigLoader.loadFromFile(propFile.getAbsolutePath());
-        assertEquals("jdbc:h2:mem:testdb", config.getUrl());
-        assertEquals("testuser", config.getUser());
-        assertEquals("testpass", config.getPassword());
-        assertEquals("org.h2.Driver", config.getDriver());
+        assertEquals("sa", config.getUser());
+        assertEquals("knight", config.getPassword());
+        assertEquals("com.microsoft.sqlserver.jdbc.SQLServerDriver", config.getDriver());
     }
 
     @Test

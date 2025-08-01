@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sql>
+    <select id="UPDATE_TKC001">
+        UPDATE TKC001 SET SIME_STATUS = '2' WHERE SHORI_TUKI = ? AND TK_DVS = ?
+    </select>
+
+    <!-- TPI_M_FUNC_EVENT -->
+    <select id="TPI_M_FUNC_EVENT" resultType="map">
+        SELECT * FROM TPI_M_FUNC_EVENT
+        WHERE FUNC_ID = ?
+        AND EVENT_ID = ?
+        ORDER BY DISP_ORDER
+    </select>
+
+    <!-- TPI_M_FUNC_EVENT -->
+    <select id="TPI_M_FUNC_EVENT_BUTTOM" resultType="map">
+        SELECT * FROM TPI_M_FUNC_EVENT
+        WHERE FUNC_ID = ?
+        AND EVENT_ID = ?
+        AND BUTTON_ID = ?
+        ORDER BY DISP_ORDER
+    </select>
+
+    <!-- TPI_M_JAVA_LOGIC -->
+    <select id="TPI_M_JAVA_LOGIC" resultType="map">
+        SELECT * FROM TPI_M_JAVA_LOGIC
+        WHERE LOGIC_ID = ?
+    </select>
+
+</sql>

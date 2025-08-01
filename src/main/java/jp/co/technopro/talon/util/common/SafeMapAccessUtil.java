@@ -101,5 +101,63 @@ public class SafeMapAccessUtil {
         return getStringOrDefault(map, key, "");
     }
 
+    /**
+     * 指定キーの値が Map の場合にのみ取得します。
+     *
+     * @param map 入力 Map
+     * @param key キー
+     * @return Map型の値（ない場合は空の Optional）
+     */
+    @SuppressWarnings("unchecked")
+    public static <K> Optional<Map<String, Object>> getMap(Map<K, ?> map, K key) {
+        return Optional.ofNullable(map)
+                .map(m -> m.get(key))
+                .filter(v -> v instanceof Map)
+                .map(v -> (Map<String, Object>) v);
+    }
+
+    /**
+     * Map をそのまま返す（null-safe）。null の場合は空の Map を返します。
+     *
+     * @param map 入力 Map
+     * @return 非 null な Map
+     */
+    public static Map<String, Object> getMap(Map<String, Object> map) {
+        return (map != null) ? map : java.util.Collections.emptyMap();
+    }
+
+
+    /**
+     * 指定キーの値が List の場合にのみ取得します。
+     *
+     * @param map 入力 Map
+     * @param key キー
+     * @return List型の値（ない場合は空の Optional）
+     */
+    @SuppressWarnings("unchecked")
+    public static <K> Optional<java.util.List<Map<String, Object>>> getList(Map<K, ?> map, K key) {
+        return Optional.ofNullable(map)
+                .map(m -> m.get(key))
+                .filter(v -> v instanceof java.util.List)
+                .map(v -> (java.util.List<Map<String, Object>>) v);
+    }
+
+    /**
+     * 指定キーの値が true に等しい場合 true を返す。
+     *
+     * @param map 入力 Map
+     * @param key キー
+     * @return boolean 値（true 以外は false）
+     */
+    public static boolean getBoolean(Map<String, ?> map, String key) {
+        Object val = map.get(key);
+        return Boolean.TRUE.equals(val);
+    }
+
+
+    public static Predicate<String> isNotEmptyString() {
+        return s -> s != null && !s.trim().isEmpty();
+    }
+
 
 }

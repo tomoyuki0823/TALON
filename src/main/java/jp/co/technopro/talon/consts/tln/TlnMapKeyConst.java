@@ -18,6 +18,9 @@ public final class TlnMapKeyConst {
     /** 機能IDを表すキー名（例: "FUNC_ID"） */
     public static final String MAP_KEY_FUNC_ID = "FUNC_ID";
 
+    /** ユーザIDを表すキー名（例: "USER_ID"） */
+    public static final String MAP_KEY_USER_ID = "USER_ID";
+
     /** イベントIDを表すキー名（例: "EVENT_ID"） */
     public static final String MAP_KEY_EVENT_ID = "EVENT_ID";
 
@@ -110,4 +113,38 @@ public final class TlnMapKeyConst {
 
     /** 共通会社コード（共通DB用途など）を表すキー名 */
     public static final String MAP_KEY_KEY_CODE = "KEY_CODE";
+
+    // ==============================
+    // 登録・更新情報
+    // ==============================
+
+    /** 作成日時 */
+    public static final String MAP_KEY_CREATED_DATE = "CREATED_DATE";
+
+    /** 作成者ユーザーID */
+    public static final String MAP_KEY_CREATED_BY = "CREATED_BY";
+
+    /** 作成プログラム名 */
+    public static final String MAP_KEY_CREATED_PRG_NM = "CREATED_PRG_NM";
+
+    /** 更新日時 */
+    public static final String MAP_KEY_UPDATED_DATE = "UPDATED_DATE";
+
+    /** 更新者ユーザーID */
+    public static final String MAP_KEY_UPDATED_BY = "UPDATED_BY";
+
+    /** 更新プログラム名 */
+    public static final String MAP_KEY_UPDATED_PRG_NM = "UPDATED_PRG_NM";
+
+    /** 単票ブロック */
+    public static final String MAP_KEY_CARD = "CARD";
+
+    /** 明細ブロック */
+    public static final String MAP_KEY_LIST = "LIST";
+
+    /** データ */
+    public static final String MAP_KEY_DATA = "DATA";
+
+    /** MAP_KEY_TYPE */
+    public static final String MAP_KEY_TYPE = "TYPE";
 }

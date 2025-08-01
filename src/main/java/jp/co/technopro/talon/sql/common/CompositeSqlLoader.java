@@ -1,15 +1,20 @@
 package jp.co.technopro.talon.sql.common;
 
 /**
- * 2つのSQLローダーを組み合わせ、会社別SQLを優先的に取得する合成ローダー。
+ * CompositeSqlLoader は SqlLoader を継承するが、自身の sqlMap は使用せず、
+ * {@code commonLoader} および {@code overrideLoader} によってSQLを取得する。
+ *
+ * 親クラスの初期化には {@code commonPath} を与えるが、これは型整合性維持のためである。
  */
+
 public class CompositeSqlLoader extends SqlLoader {
 
     private final SqlLoader commonLoader;
     private final SqlLoader overrideLoader;
 
     public CompositeSqlLoader(String commonPath, String overridePath) {
-        super(null); // 基底クラスの初期化不要
+        // super(null) をやめて、意図が伝わるよう "composite-mode" などのダミー値にする
+        super(commonPath);
         this.commonLoader = new SqlLoader(commonPath);
         this.overrideLoader = new SqlLoader(overridePath);
     }
@@ -24,3 +29,4 @@ public class CompositeSqlLoader extends SqlLoader {
         return overrideLoader.contains(id) || commonLoader.contains(id);
     }
 }
+

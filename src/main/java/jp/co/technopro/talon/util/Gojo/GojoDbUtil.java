@@ -16,8 +16,7 @@ import static jp.co.technopro.talon.consts.Gojo.GojoMapKeyConst.MAP_KEY_SIME_STA
 import static jp.co.technopro.talon.consts.Gojo.GojoSqlKeyConst.*;
 import static jp.co.technopro.talon.consts.Gojo.GojoSqlXmlPathConst.SQL_GOJO_COMMON;
 import static jp.co.technopro.talon.consts.Gojo.GojoTableNameConst.*;
-import static jp.co.technopro.talon.consts.tln.TlnCompanyConst.COMPANY_CD_GOJO;
-import static jp.co.technopro.talon.mapper.TalonParamMapper.mapToDto;
+import static jp.co.technopro.talon.mapper.common.TalonParamMapper.mapToDto;
 import static jp.co.technopro.talon.util.common.DbUtil.*;
 
 public class GojoDbUtil {
@@ -27,9 +26,9 @@ public class GojoDbUtil {
     /**
      * TK_MEMBER テーブルから特定の会員情報を1件取得します。
      *
-     * @param conn   DBコネクション（null可、nullの場合は dto.getCompanyCode() に基づき自動取得）
-     * @param tkNo   会員番号（検索条件）
-     * @param dto    TalonパラメータDTO（会社コードを含む）
+     * @param conn DBコネクション（null可、nullの場合は dto.getCompanyCode() に基づき自動取得）
+     * @param tkNo 会員番号（検索条件）
+     * @param dto  TalonパラメータDTO（会社コードを含む）
      * @return 会員情報を表す Map（該当なしの場合は null）
      * @throws SQLException           SQL実行時に発生する例外
      * @throws ClassNotFoundException JDBCドライバ読み込み失敗時の例外
@@ -46,9 +45,9 @@ public class GojoDbUtil {
     /**
      * TK_SHIHARAI テーブルから特定の支払情報を1件取得します。
      *
-     * @param conn   DBコネクション（null可。nullの場合は dto.getCompanyCode により自動取得されます）
-     * @param tkNo   会員番号（検索条件）
-     * @param dto    TalonパラメータDTO（会社コードを含む）
+     * @param conn DBコネクション（null可。nullの場合は dto.getCompanyCode により自動取得されます）
+     * @param tkNo 会員番号（検索条件）
+     * @param dto  TalonパラメータDTO（会社コードを含む）
      * @return 支払情報を表す Map（該当なしの場合は null）
      * @throws Exception SQL実行時またはDB接続時の例外
      */
@@ -61,9 +60,9 @@ public class GojoDbUtil {
     /**
      * TKC001 テーブルから、指定された処理月（SHORI_TUKI）に一致する締めデータを取得します。
      *
-     * @param conn       DBコネクション（null可。nullの場合は dto.getCompanyCode により接続を取得）
-     * @param shoriTuki  処理月（WHERE句の条件値）
-     * @param dto        TalonパラメータDTO（会社コードを含む）
+     * @param conn      DBコネクション（null可。nullの場合は dto.getCompanyCode により接続を取得）
+     * @param shoriTuki 処理月（WHERE句の条件値）
+     * @param dto       TalonパラメータDTO（会社コードを含む）
      * @return 処理月に該当するレコードのリスト（各行は Map<String, Object> 形式）
      * @throws SQLException SQL実行時の例外
      */
@@ -86,14 +85,14 @@ public class GojoDbUtil {
      * @throws SQLException           データベース接続やSQL実行時にエラーが発生した場合
      * @throws ClassNotFoundException JDBCドライバの読み込みに失敗した場合など
      */
-    public static TkMemberDto setTkMemberDto(Connection conn, String tkNo) throws Exception {
-        List<Map<String, Object>> tokMapList = selectById(conn, SQL_TK_MEMBER, COMPANY_CD_GOJO, tkNo).getMapListResult();
+    public static TkMemberDto setTkMemberDto(Connection conn, String tkNo, TalonParamDto dto)  {
+        List<Map<String, Object>> tokMapList = selectById(conn, SQL_TK_MEMBER, dto.getCompanyCode(), tkNo).getMapListResult();
         if (tokMapList.isEmpty()) return null;
 
         Map<String, Object> tokMap = tokMapList.get(0);
         TkMemberDto tkMemberDto = mapToDto(tokMap, TkMemberDto.class);
 
-        List<Map<String, Object>> shiharaiMapList = selectById(conn, SQL_TK_SHIHARAI, COMPANY_CD_GOJO, tkNo).getMapListResult();
+        List<Map<String, Object>> shiharaiMapList = selectById(conn, SQL_TK_SHIHARAI, dto.getCompanyCode(), tkNo).getMapListResult();
         if (!shiharaiMapList.isEmpty()) {
             Map<String, Object> shiharaiMap = shiharaiMapList.get(0);
             YotakukinShiharaiRirekiDto yotakukinShiharaiRirekiDto = mapToDto(shiharaiMap, YotakukinShiharaiRirekiDto.class);
@@ -110,9 +109,8 @@ public class GojoDbUtil {
      * @param tkNo      対象の会員番号
      * @param shoriTuki 処理月
      * @return true: すでに存在している（＝履歴あり）, false: 未登録
-     * @throws SQLException SQL実行時の例外
      */
-    public static boolean isCntHenko2(Connection conn, String tkNo, String shoriTuki, TalonParamDto dto) throws SQLException {
+    public static boolean isCntHenko2(Connection conn, String tkNo, String shoriTuki, TalonParamDto dto)  {
         Map<String, Object> whereMap = Map.of(
                 MAP_KEY_TK_NO, tkNo,
                 MAP_KEY_SHORI_TUKI, shoriTuki
@@ -128,10 +126,13 @@ public class GojoDbUtil {
      * @return TK_HENKO から取得された変更反映対象の一覧
      * @throws SQLException SQL実行時の例外
      */
-    public static List<Map<String, Object>> getHenkoReflectTargetList(Connection conn, String shoriTuki) throws
-            SQLException {
+    public static List<Map<String, Object>> getHenkoReflectTargetList(Connection conn, String shoriTuki, TalonParamDto dto) {
         Map<String, Object> whereMap = Map.of(MAP_KEY_SHORI_TUKI, shoriTuki);
-        return selectList(conn, TABLE_TK_HENKO, whereMap, null).getMapListResult();
+        try {
+            return selectList(conn, TABLE_TK_HENKO2, whereMap, dto.getCompanyCode()).getMapListResult();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -169,8 +170,12 @@ public class GojoDbUtil {
      * @return 全件のレコードを List<Map> として返却
      * @throws Exception DB接続取得やSQL実行時にエラーが発生した場合
      */
-    public static List<Map<String, Object>> getMstYotakukin(Connection conn, TalonParamDto dto) throws Exception {
-        return getMstYotakukin(conn, dto.getCompanyCode());
+    public static List<Map<String, Object>> getMstYotakukin(Connection conn, TalonParamDto dto) {
+        try {
+            return getMstYotakukin(conn, dto.getCompanyCode());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -216,14 +221,17 @@ public class GojoDbUtil {
      * @param tkNo      特別会員番号（TK_NO）
      * @param shoriTuki 処理対象月（SHORI_TUKI）
      * @param companyCd 会社コード（DB接続が null の場合やテーブル依存切替に使用）
-     * @throws SQLException SQL実行時の例外
      */
-    public static void insTkYotaku(Connection conn, String tkNo, String shoriTuki, String companyCd) throws SQLException {
+    public static void insTkYotaku(Connection conn, String tkNo, String shoriTuki, String companyCd)  {
         Map<String, Object> insMap = new HashMap<>();
         insMap.put(MAP_KEY_TK_NO, tkNo);
         insMap.put(MAP_KEY_SHORI_TUKI, shoriTuki);
 
-        DbUtil.insertByMapEx(conn, companyCd, TABLE_TK_YOTAKU, insMap, false);
+        try {
+            DbUtil.insertByMapEx(conn, companyCd, TABLE_TK_YOTAKU, insMap, false);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static void insTkHenko2(Connection conn, TalonParamDto paramDto, TkMemberDto tkMemberDto) throws SQLException {
@@ -253,8 +261,8 @@ public class GojoDbUtil {
      * @throws SQLException 登録処理中にDBエラーが発生した場合
      */
     public static void insertSimeData(Connection conn, String shoriTuki,
-                                List<Map<String, Object>> hanyouCodeList,
-                                TalonParamDto dto) throws SQLException {
+                                      List<Map<String, Object>> hanyouCodeList,
+                                      TalonParamDto dto) throws SQLException {
 
         for (Map<String, Object> code : hanyouCodeList) {
             Map<String, Object> insMap = new HashMap<>();
@@ -278,7 +286,9 @@ public class GojoDbUtil {
         return getCount(conn, TABLE_TKC001, Map.of(MAP_KEY_SHORI_TUKI, shoriTuki), paramDto.getCompanyCode()) == 0;
     }
 
-    /** TK_SHINKI テーブルから処理月で絞り込んだレコード一覧を取得 */
+    /**
+     * TK_SHINKI テーブルから処理月で絞り込んだレコード一覧を取得
+     */
     public static List<Map<String, Object>> loadShinkiData(Connection conn, String shoriTuki) throws SQLException {
         Map<String, Object> whereMap = Map.of(MAP_KEY_SHORI_TUKI, shoriTuki);
         return selectList(conn, TABLE_TK_SHINKI, whereMap, null).getMapListResult();
@@ -298,7 +308,7 @@ public class GojoDbUtil {
      * @throws SQLException SQL例外が発生した場合
      */
     public static void deleteTkMember(Connection conn, String tkNo, String companyCd) throws SQLException {
-        DbUtil.deleteByMapEx(conn, "TK_MEMBER" ,Map.of(MAP_KEY_TK_NO, tkNo), List.of(MAP_KEY_TK_NO), companyCd);
+        DbUtil.deleteByMapEx(conn, "TK_MEMBER", Map.of(MAP_KEY_TK_NO, tkNo), List.of(MAP_KEY_TK_NO), companyCd);
     }
 
     /**
@@ -312,6 +322,103 @@ public class GojoDbUtil {
     public static void updateTkc001(Connection conn, String shoriTuki, String tkDvs) throws SQLException {
         String sql = sqlLoader.get(SQL_KEY_UPDATE_TKC001);
         DbUtil.update(conn, sql, shoriTuki, tkDvs);
+    }
+
+    /**
+     * TPIM0004 テーブルから、未締め（SIME_FLG が NULL）の YM_ID を取得します。
+     * <p>
+     * このメソッドは、指定されたカンパニーコードに基づいて、対象テーブルから
+     * SIME_FLG が null のレコードを検索し、YM_ID を返却します。該当レコードが存在しない場合は空を返します。
+     * </p>
+     *
+     * @param conn DBコネクション（外部で管理されたものを使用。クローズしません）
+     * @param dto  TalonParamDto（会社コードなどを含む）
+     * @return YM_ID の値（存在しない場合は {@code Optional.empty()}）
+     * @throws SQLException SQL 実行時にエラーが発生した場合
+     */
+    public static Optional<String> getUnclosedYmId(Connection conn, TalonParamDto dto) throws SQLException {
+        Map<String, Object> resultMap = selectOne(
+                conn,
+                "TPIM0004",
+                null,
+                Map.of("SIME_FLG", null),
+                "YM_ID",
+                dto.getCompanyCode()
+        ).getMapResult();
+
+        return Optional.ofNullable((String) resultMap.get("YM_ID"));
+    }
+
+    /**
+     * VIEW_TK_HENKO_03 ビューから、支部・市町村データを取得します。
+     * <p>
+     * 指定された会社コードに基づき、VIEW_TK_HENKO_03 の内容を検索して全件返却します。
+     * WHERE 条件は指定されていないため、該当会社の全データを対象とします。
+     * </p>
+     *
+     * @param conn DBコネクション（外部で管理されたものを使用。クローズしません）
+     * @param dto  TalonParamDto（会社コードを含む）
+     * @return 支部・市町村データのリスト（1行 = 1件のマップ形式）
+     * @throws SQLException SQL 実行時にエラーが発生した場合
+     */
+    public static List<Map<String, Object>> getSibuSityosonData(Connection conn, TalonParamDto dto) throws SQLException {
+        return selectList(
+                conn,
+                "VIEW_TK_HENKO_03",
+                null,
+                dto.getCompanyCode()
+        ).getMapListResult();
+    }
+
+    /**
+     * TK_HENKO_03 テーブルに対して、指定された処理月のデータを削除し、
+     * その後に新たなレコードを挿入します。
+     * <p>
+     * 処理対象のレコードは {@code record} にて指定され、{@code SHORI_TUKI} は引数で上書きされます。
+     * </p>
+     *
+     * @param conn      DBコネクション（外部で管理されたものを使用。クローズしません）
+     * @param shoriTuki 処理月（フォーマット例：202507）
+     * @param record    挿入対象のレコードマップ（処理月が追加されます）
+     * @param dto       TalonParamDto（会社コードなどを含む）
+     * @throws SQLException SQL 実行時にエラーが発生した場合
+     */
+    public static void delInsTkHenko03(Connection conn, String shoriTuki, Map<String, Object> record, TalonParamDto dto) throws SQLException {
+        deleteTkHenko03(conn, shoriTuki, dto.getCompanyCode());
+        record.put(MAP_KEY_SHORI_TUKI, shoriTuki);
+        insertByMapEx(conn, dto.getCompanyCode(), "TK_HENKO_03", record, false);
+    }
+
+    /**
+     * TK_HENKO_03 テーブルから、指定された処理月（SHORI_TUKI）のレコードを削除します。
+     *
+     * @param conn      DBコネクション（外部で管理されたものを使用。クローズしません）
+     * @param shoriTuki 削除対象の処理月（例："202507"）
+     * @param companyCd 対象の会社コード（DB分岐用）
+     * @throws SQLException SQL 実行時にエラーが発生した場合
+     */
+    public static void deleteTkHenko03(Connection conn, String shoriTuki, String companyCd) throws SQLException {
+        DbUtil.deleteByMapEx(
+                conn,
+                "TK_HENKO_03",
+                Map.of(MAP_KEY_SHORI_TUKI, shoriTuki),
+                List.of(MAP_KEY_SHORI_TUKI),
+                companyCd
+        );
+    }
+
+    /**
+     * 既存送金データの削除。
+     */
+    public static void delSokinData(Connection conn, String tkNo, String zoku, String companyCd) throws SQLException {
+
+        DbUtil.deleteByMapEx(
+                conn,
+                "TK_YOTAKU_SOKIN",
+                Map.of(MAP_KEY_TK_NO, tkNo, MAP_KEY_ZOKU, zoku),
+                List.of(MAP_KEY_SHORI_TUKI),
+                companyCd
+        );
     }
 
 

@@ -1,5 +1,6 @@
-package jp.co.technopro.talon.mapper;
+package jp.co.technopro.talon.mapper.common;
 
+import jp.co.technopro.talon.dto.common.BlockDataDto;
 import jp.co.technopro.talon.dto.common.TalonParamDto;
 
 import java.lang.reflect.Field;
@@ -50,19 +51,29 @@ public class TalonParamMapper {
         dto.setTlnIsUpdate(Boolean.TRUE.equals(map.get(MAP_KEY_TLN_IS_UPDATE)));
         dto.setTlnIsDelete(Boolean.TRUE.equals(map.get(MAP_KEY_TLN_IS_DELETE)));
         dto.setTlnSession(castList(map.get(MAP_KEY_TLN_SESSION)));
-        dto.setLogger(map.get("LOGGER"));
+        dto.setLogger(map.get(MAP_KEY_LOGGER));
         dto.setCompanyCode((String) map.get(MAP_KEY_COMPANY_CODE));
         dto.setCompanyCodeCommon((String) map.get(MAP_KEY_COMPANY_CODE_COMMON));
         // BLOCK1〜BLOCK9 に対応するデータを動的にバインド
         for (int i = 1; i <= 9; i++) {
-            Map<String, Object> blockMap = castMap(map.get("BLOCK" + i));
-            if (blockMap != null) {
-                try {
-                    Method setter = TalonParamDto.class.getMethod("setBlock" + i, Map.class);
-                    setter.invoke(dto, blockMap);
-                } catch (Exception e) {
-                    throw new RuntimeException("BLOCK" + i + "のセットに失敗しました", e);
-                }
+            Object wrapperObj = map.get("BLOCK" + i);
+            if (!(wrapperObj instanceof Map)) continue;
+
+            Map<String, Object> wrapper = castMap(wrapperObj);
+            BlockDataDto blockDto = new BlockDataDto();
+            blockDto.setType((String) wrapper.get(MAP_KEY_TYPE));
+
+            if (MAP_KEY_CARD.equalsIgnoreCase(blockDto.getType())) {
+                blockDto.setCardData(castMap(wrapper.get(MAP_KEY_DATA)));
+            } else if (MAP_KEY_LIST.equalsIgnoreCase(blockDto.getType())) {
+                blockDto.setListData(castList(wrapper.get(MAP_KEY_DATA)));
+            }
+
+            try {
+                Method setter = TalonParamDto.class.getMethod("setBlock" + i, BlockDataDto.class);
+                setter.invoke(dto, blockDto);
+            } catch (Exception e) {
+                throw new RuntimeException("BLOCK" + i + " のセットに失敗しました", e);
             }
         }
 

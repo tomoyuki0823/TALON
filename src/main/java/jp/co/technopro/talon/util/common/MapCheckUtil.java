@@ -84,4 +84,42 @@ public class MapCheckUtil {
         }
         return false;
     }
+    /**
+     * 指定されたMapに指定キーが存在し、値がnullでも空文字でもないかを判定します。
+     *
+     * @param map チェック対象のMap
+     * @param key 判定対象のキー
+     * @return 有効な値があれば true
+     */
+    public static boolean hasValue(Map<String, Object> map, String key) {
+        if (map == null || key == null) return false;
+        Object value = map.get(key);
+        if (value == null) return false;
+        if (value instanceof String) return !((String) value).trim().isEmpty();
+        return true;
+    }
+
+    /**
+     * 指定されたMapの指定キーの値がすべて null または空文字かを判定します。
+     *
+     * @param map チェック対象のMap
+     * @param keys チェック対象のキー群
+     * @return すべて空 or null なら true
+     */
+    public static boolean isAllBlank(Map<String, Object> map, String... keys) {
+        if (map == null || keys == null) return true;
+        for (String key : keys) {
+            Object val = map.get(key);
+            if (val != null && (!(val instanceof String) || !((String) val).trim().isEmpty())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static boolean isEmptyAnyBlank(Map<String, Object> map, String... keys) {
+        if (isEmpty(map)) return true;
+        if (isAnyBlank(map, keys)) return true;
+        return false;
+    }
 }

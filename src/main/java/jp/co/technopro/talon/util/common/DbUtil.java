@@ -6,7 +6,11 @@ import jp.co.technopro.talon.dto.common.TalonParamDto;
 import jp.co.technopro.talon.sql.common.SqlLoader;
 
 import java.sql.*;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.Date;
 import java.util.stream.Collectors;
 
 import jp.co.technopro.talon.sql.common.SqlLoaderFactory;
@@ -46,9 +50,13 @@ public class DbUtil {
      * @return DB接続（非null）
      * @throws Exception 接続取得時にエラーが発生した場合
      */
-    public static Connection getConnectionIfNull(Connection conn, String companyCd) throws SQLException, ClassNotFoundException {
+    public static Connection getConnectionIfNull(Connection conn, String companyCd)  {
         if (conn != null) return conn;
-        return DbConfigLoader.load(companyCd).getConnection();
+        try {
+            return DbConfigLoader.load(companyCd).getConnection();
+        } catch (SQLException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -67,7 +75,7 @@ public class DbUtil {
      * @throws SQLException SQL実行時の例外
      */
     public static SqlResult selectById(Connection conn, String sqlId, String companyCd, Object... params)
-            throws SQLException, ClassNotFoundException {
+             {
 
         SqlLoader loader = SqlLoaderFactory.forCompanyWithCommon(companyCd);
         String sql = loader.get(sqlId);
@@ -80,12 +88,21 @@ public class DbUtil {
         Connection actualConn = conn;
 
         try {
-            if (actualConn == null || actualConn.isClosed()) {
-                actualConn = getConnectionIfNull(null, companyCd);
-                shouldClose = true;
+            try {
+                if (actualConn == null || actualConn.isClosed()) {
+                    actualConn = getConnectionIfNull(null, companyCd);
+                    shouldClose = true;
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
             }
 
-            List<Map<String, Object>> resultList = select(actualConn, companyCd, sql, params);
+            List<Map<String, Object>> resultList = null;
+            try {
+                resultList = select(actualConn, companyCd, sql, params);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
 
             SqlResult result = new SqlResult();
             result.setMapListResult(resultList);
@@ -421,7 +438,7 @@ public class DbUtil {
      * @return レコードが存在しなければ true、存在すれば false
      * @throws SQLException SQL実行時の例外
      */
-    public static boolean isTableEmpty(Connection conn, String tableName, Map<String, Object> whereMap, String companyCode) throws SQLException {
+    public static boolean isTableEmpty(Connection conn, String tableName, Map<String, Object> whereMap, String companyCode)  {
         int count = getCount(conn, tableName, whereMap, companyCode);
         return count == 0;
     }
@@ -673,12 +690,12 @@ public class DbUtil {
     /**
      * 指定テーブルに対して、WHERE条件に合致する最初の1レコードを取得します。
      *
-     * @param conn       DBコネクション（null可）
-     * @param tableName  テーブル名（例: "TK_MEMBER"）
-     * @param columns    取得カラム（null または空の場合は *）
-     * @param whereMap   WHERE条件（必須）
-     * @param orderBy    ORDER BY句（null可）
-     * @param companyCd  会社コード（conn が null の場合に使用）
+     * @param conn      DBコネクション（null可）
+     * @param tableName テーブル名（例: "TK_MEMBER"）
+     * @param columns   取得カラム（null または空の場合は *）
+     * @param whereMap  WHERE条件（必須）
+     * @param orderBy   ORDER BY句（null可）
+     * @param companyCd 会社コード（conn が null の場合に使用）
      * @return SqlResult（最初の1件のレコードが mapResult に格納される）
      * @throws SQLException DBアクセス時の例外
      */
@@ -755,7 +772,7 @@ public class DbUtil {
      * 結果をリスト形式で返却します。
      *
      * <p>
-     * {@link SqlResult#getListMapResult()} で行データリストを取得可能です。<br>
+     * {@link SqlResult} で行データリストを取得可能です。<br>
      * {@link SqlResult#getSize()} で取得件数を確認可能です。
      * </p>
      *
@@ -1008,7 +1025,7 @@ public class DbUtil {
      * @throws SQLException SQL実行時の例外
      */
     public static int getCount(Connection conn, String tableName,
-                               Map<String, Object> whereMap, String companyCd) throws SQLException {
+                               Map<String, Object> whereMap, String companyCd)  {
 
         boolean shouldClose = false;
         Connection actualConn = conn;
@@ -1019,7 +1036,11 @@ public class DbUtil {
                 shouldClose = true;
             }
         } catch (Exception e) {
-            throw new SQLException("DB接続の取得に失敗しました", e);
+            try {
+                throw new SQLException("DB接続の取得に失敗しました", e);
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
         }
 
         StringBuilder sql = new StringBuilder("SELECT COUNT(*) AS CNT FROM ").append(tableName);
@@ -1050,6 +1071,8 @@ public class DbUtil {
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getInt("CNT") : 0;
             }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         } finally {
             if (shouldClose && actualConn != null) {
                 try {
@@ -1059,5 +1082,160 @@ public class DbUtil {
                 }
             }
         }
+    }
+
+    /**
+     * 採番を実行し、整形済みの番号を取得します。
+     * <p>
+     * {@code TLN_M_SEQ} の LINE_NO をインクリメントし、 {@code TLN_M_SEQ_PARAMETER} の定義に基づき整形された番号を返却します。
+     * </p>
+     *
+     * @param conn      DBコネクション（共通DB）
+     * @param saibanKey 採番キー（例: "AUTO_NO"）
+     * @param count     発番件数
+     * @return NO: 整形済み番号、NO_LIST: 発番リスト
+     * @throws SQLException SQL実行時例外
+     */
+    public static Map<String, Object> getNumberingData(Connection conn, String saibanKey, int count) throws SQLException {
+        String breakKey = resolveBreakKey(conn, saibanKey);
+        ensureSeqRecordExists(conn, saibanKey, breakKey);
+        return getNumberingDataInternal(conn, saibanKey, breakKey, count);
+    }
+
+    /**
+     * BREAK_KEY（年月など）をTLN_M_SEQ_PARAMETERから判定
+     */
+    private static String resolveBreakKey(Connection conn, String saibanKey) throws SQLException {
+        String sql = "SELECT VALUE FROM TLN_M_SEQ_PARAMETER WHERE SAIBAN_SIKIBETU_CODE = ? AND KIND = 2 ORDER BY SEQ_NO";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, saibanKey);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String fmt = rs.getString("VALUE");
+                    return formatDate(fmt);
+                } else {
+                    return "NONE";
+                }
+            }
+        }
+    }
+
+    /**
+     * ブレークキーが存在しない場合はTLN_M_SEQにINSERT
+     */
+    private static void ensureSeqRecordExists(Connection conn, String saibanKey, String breakKey) throws SQLException {
+        String checkSql = "SELECT 1 FROM TLN_M_SEQ WHERE SAIBAN_SIKIBETU_CODE = ? AND BREAK_KEY = ?";
+        try (PreparedStatement ps = conn.prepareStatement(checkSql)) {
+            ps.setString(1, saibanKey);
+            ps.setString(2, breakKey);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    String insertSql = "INSERT INTO TLN_M_SEQ (SAIBAN_SIKIBETU_CODE, BREAK_KEY, LINE_NO, CREATED_DATE, CREATED_BY, CREATED_PRG_NM, MODIFY_COUNT) VALUES (?, ?, 0, GETDATE(), 'system', 'DbUtil.getNumberingData', 0)";
+                    try (PreparedStatement insertPs = conn.prepareStatement(insertSql)) {
+                        insertPs.setString(1, saibanKey);
+                        insertPs.setString(2, breakKey);
+                        insertPs.executeUpdate();
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 採番実行本体（BREAK_KEY を指定して実行）
+     */
+    private static Map<String, Object> getNumberingDataInternal(Connection conn, String saibanKey, String breakKey, int count) throws SQLException {
+        Map<String, Object> result = new HashMap<>();
+        List<Integer> numberList = new ArrayList<>();
+
+        // 採番マスタ更新＋取得
+        String updateSql = "UPDATE TLN_M_SEQ SET LINE_NO = ISNULL(LINE_NO, 0) + ? OUTPUT INSERTED.LINE_NO WHERE SAIBAN_SIKIBETU_CODE = ? AND BREAK_KEY = ?";
+        int latestNo;
+
+        try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
+            ps.setInt(1, count);
+            ps.setString(2, saibanKey);
+            ps.setString(3, breakKey);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new IllegalStateException("採番マスタが存在しません: " + saibanKey + ", BREAK_KEY=" + breakKey);
+                }
+                latestNo = rs.getInt("LINE_NO");
+            }
+        }
+
+        for (int i = count - 1; i >= 0; i--) {
+            numberList.add(latestNo - i);
+        }
+
+        // 採番履歴登録
+        String insertSql = "INSERT INTO TLN_M_SEQ_PARAMETER (SAIBAN_SIKIBETU_CODE, SEQ_NO, VALUE, KIND, CREATED_DATE, CREATED_BY, CREATED_PRG_NM) VALUES (?, ?, ?, 3, GETDATE(), 'system', 'DbUtil.getNumberingData')";
+        try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
+            for (Integer no : numberList) {
+                ps.setString(1, saibanKey);
+                ps.setInt(2, no);
+                ps.setString(3, String.valueOf(no));
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        }
+
+        // フォーマット整形
+        List<String> formattedList = numberList.stream()
+                .map(no -> formatNumber(conn, saibanKey, no))
+                .collect(Collectors.toList());
+
+        result.put("NO", formattedList.get(0));
+        result.put("NO_LIST", formattedList);
+        return result;
+    }
+
+    /**
+     * 番号の構築ルールに従って文字列を組み立て
+     */
+    private static String formatNumber(Connection conn, String saibanKey, int no) {
+        List<String> parts = new ArrayList<>();
+
+        String sql = "SELECT SEQ_NO, KIND, VALUE FROM TLN_M_SEQ_PARAMETER WHERE SAIBAN_SIKIBETU_CODE = ? ORDER BY SEQ_NO";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, saibanKey);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int kind = rs.getInt("KIND");
+                    String value = rs.getString("VALUE");
+
+                    switch (kind) {
+                        case 1:
+                            parts.add(value);
+                            break;
+                        case 2:
+                            parts.add(formatDate(value));
+                            break;
+                        case 3:
+                            int digits = Integer.parseInt(value);
+                            parts.add(String.format("%0" + digits + "d", no));
+                            break;
+                        default:
+                            parts.add("");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("採番フォーマット取得失敗", e);
+        }
+
+        return String.join("", parts);
+    }
+
+    /**
+     * %tY%tm%td → yyyyMMdd などへ変換し日付整形
+     */
+    private static String formatDate(String pattern) {
+        String sdfPattern = pattern
+                .replace("%tY", "yyyy")
+                .replace("%ty", "yy")
+                .replace("%tm", "MM")
+                .replace("%td", "dd");
+        return new SimpleDateFormat(sdfPattern).format(new Date());
     }
 }

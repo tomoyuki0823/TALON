@@ -1,7 +1,5 @@
 package jp.co.technopro.talon.consts.Gojo;
 
-import jp.co.technopro.talon.logic.Gojo.LogicInvoker;
-
 /**
  * 業務ロジック識別子（Logic ID）定数クラス。
  * {@link LogicInvoker} などで使用される識別キーを定義します。

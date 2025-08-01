@@ -3,8 +3,6 @@ package jp.co.technopro.talon.logic.Gojo;
 import jp.co.technopro.talon.dto.common.EventResultDto;
 import jp.co.technopro.talon.dto.common.TalonParamDto;
 import jp.co.technopro.talon.logic.common.ExecutableLogic;
-import jp.co.technopro.talon.sql.common.SqlLoader;
-import jp.co.technopro.talon.util.common.DbUtil;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -14,7 +12,6 @@ import static jp.co.technopro.talon.consts.Gojo.GojoCodeValuesConst.TK_DVS_SHINK
 import static jp.co.technopro.talon.consts.Gojo.GojoEventIdConst.*;
 import static jp.co.technopro.talon.consts.Gojo.GojoMessagesConst.*;
 import static jp.co.technopro.talon.consts.Gojo.GojoMapKeyConst.*;
-import static jp.co.technopro.talon.consts.Gojo.GojoSqlXmlPathConst.SQL_GOJO_SHINKI;
 import static jp.co.technopro.talon.consts.Gojo.GojoTableNameConst.*;
 import static jp.co.technopro.talon.util.Gojo.GojoDbUtil.*;
 import static jp.co.technopro.talon.util.Gojo.GojoLogicUtil.getShoriTukiFromConditionData;

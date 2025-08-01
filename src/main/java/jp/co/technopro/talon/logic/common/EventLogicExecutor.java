@@ -3,9 +3,8 @@ package jp.co.technopro.talon.logic.common;
 import jp.co.technopro.logger.TalonLogger;
 import jp.co.technopro.talon.dto.common.EventResultDto;
 import jp.co.technopro.talon.dto.common.TalonParamDto;
-import jp.co.technopro.talon.mapper.TalonParamMapper;
+import jp.co.technopro.talon.mapper.common.TalonParamMapper;
 
-import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.util.List;
 import java.util.Map;
@@ -103,23 +102,34 @@ public class EventLogicExecutor {
 
     /**
      * Javaクラスおよびメソッドをリフレクションで呼び出し、ロジックを実行します。
+     * <p>
+     * 呼び出し対象クラスは {@link jp.co.technopro.talon.logic.common.AbstractLogicBase} を継承している必要があります。
      *
      * @param conn     DB接続
      * @param logicRow 実行対象ロジックの定義（TPI_M_JAVA_LOGIC）
      * @param paramDto 実行時引数（TalonParamDto）
      * @param logicId  ロジックID（ログ出力用）
+     * @return 実行結果（EventResultDto）
      * @throws Exception クラスロード・インスタンス生成・メソッド実行時の任意の例外
      */
-    private static void invokeLogic(Connection conn, Map<String, Object> logicRow, TalonParamDto paramDto, String logicId) throws Exception {
+    private static EventResultDto invokeLogic(Connection conn, Map<String, Object> logicRow, TalonParamDto paramDto, String logicId) throws Exception {
         String className = (String) logicRow.get(MAP_KEY_CLASS_NAME);
-        String methodName = (String) logicRow.get(MAP_KEY_METHOD_NAME);
 
+        // クラスをロードしてインスタンス化
         Class<?> clazz = Class.forName(className);
         Object instance = clazz.getDeclaredConstructor().newInstance();
-        Method method = clazz.getMethod(methodName, Connection.class, TalonParamDto.class);
 
-        Object result = method.invoke(instance, conn, paramDto);
+        // AbstractLogicBase を継承していることを確認
+        if (!(instance instanceof AbstractLogicBase)) {
+            throw new IllegalStateException("クラス " + className + " は AbstractLogicBase を継承していません。");
+        }
+
+        // 実行（runはスーパークラスで実装済）
+        AbstractLogicBase logic = (AbstractLogicBase) instance;
+        EventResultDto result = logic.run(conn, paramDto);
+
         System.out.println("Logic [" + logicId + "] executed. Result: " + result);
+        return result;
     }
 
     /**
