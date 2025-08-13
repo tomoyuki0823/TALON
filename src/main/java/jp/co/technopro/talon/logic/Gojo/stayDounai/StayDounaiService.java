@@ -11,6 +11,7 @@ public class StayDounaiService extends GojoAbstractLogicBase {
 
     @Override
     protected EventResultDto executeLogic() {
+        logInfoClassStart(getClass().getSimpleName());
         return null;
     }
 }

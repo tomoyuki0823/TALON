@@ -2,6 +2,7 @@ package jp.co.technopro.talon.logic.Gojo;
 
 import jp.co.technopro.talon.dto.common.EventResultDto;
 import jp.co.technopro.talon.dto.common.TalonParamDto;
+import jp.co.technopro.talon.logic.Gojo.common.GojoAbstractLogicBase;
 import jp.co.technopro.talon.logic.common.ExecutableLogic;
 
 import java.sql.Connection;
@@ -17,24 +18,12 @@ import static jp.co.technopro.talon.util.Gojo.GojoDbUtil.*;
 import static jp.co.technopro.talon.util.Gojo.GojoLogicUtil.getShoriTukiFromConditionData;
 import static jp.co.technopro.talon.util.common.DbUtil.*;
 
-public class ShinkiService implements ExecutableLogic {
+public class ShinkiService extends GojoAbstractLogicBase {
 
     @Override
-    public EventResultDto run(Connection conn, TalonParamDto paramDto) throws SQLException {
-        String eventId = paramDto.getEventId();
-        switch (eventId) {
-            case SHINKI_GENSHOKU_CHK:
-                return chkGensyoku(conn, paramDto);
-
-            case SHINKI_DUPLICATE_GENSHOKU_CHK:
-                return chkDuplicate(conn, paramDto);
-
-            case SHINKI_HON_TOUROKU:
-                return shinkiSimeRenkei(conn, paramDto);
-
-            default:
-                return EventResultDto.error("未対応のイベントID: " + eventId);
-        }
+    protected EventResultDto executeLogic() {
+        logInfoClassStart(getClass().getSimpleName());
+        return null;
     }
 
     /**
@@ -100,7 +89,7 @@ public class ShinkiService implements ExecutableLogic {
         // 退会していないデータが存在するかを確認
         Map<String, Object> whereMap = new HashMap<>();
         whereMap.put(MAP_KEY_NO, no);
-        whereMap.put(MAP_GOJYO_TAIKAI_CD, null);  // null指定 → IS NULL 検索
+        whereMap.put(MAP_KEY_GOJYO_TAIKAI_CD, null);  // null指定 → IS NULL 検索
 
         boolean isTaikai = isTableEmpty(conn, TABLE_GEN_T_KAIIN, whereMap, paramDto.getCompanyCode());
 
@@ -146,5 +135,6 @@ public class ShinkiService implements ExecutableLogic {
             return EventResultDto.ok();
         }
     }
+
 
 }

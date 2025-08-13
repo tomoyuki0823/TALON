@@ -20,6 +20,7 @@ public class SimeService extends GojoAbstractLogicBase {
 
     @Override
     protected EventResultDto executeLogic() {
+        logInfoClassStart(getClass().getSimpleName());
         return setSimeData();
     }
 

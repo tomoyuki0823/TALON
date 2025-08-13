@@ -12,7 +12,7 @@ import java.util.Map;
 
 import static jp.co.technopro.talon.consts.Gojo.GojoCodeValuesConst.TK_DVS_SHINKI;
 import static jp.co.technopro.talon.consts.Gojo.GojoEventIdConst.*;
-import static jp.co.technopro.talon.consts.Gojo.GojoMapKeyConst.MAP_GOJYO_TAIKAI_CD;
+import static jp.co.technopro.talon.consts.Gojo.GojoMapKeyConst.MAP_KEY_GOJYO_TAIKAI_CD;
 import static jp.co.technopro.talon.consts.Gojo.GojoMapKeyConst.MAP_KEY_NO;
 import static jp.co.technopro.talon.consts.Gojo.GojoMessagesConst.MSG_DUPLICATE_GENSYOKU;
 import static jp.co.technopro.talon.consts.Gojo.GojoMessagesConst.MSG_NON_SHORI_TUKI;

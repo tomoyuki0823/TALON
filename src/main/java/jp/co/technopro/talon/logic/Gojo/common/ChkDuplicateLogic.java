@@ -1,5 +1,6 @@
 package jp.co.technopro.talon.logic.Gojo.common;
 
+import jp.co.technopro.logger.TalonLogger;
 import jp.co.technopro.talon.dto.common.EventResultDto;
 import jp.co.technopro.talon.dto.common.TalonParamDto;
 import jp.co.technopro.talon.logic.common.AbstractLogicBase;
@@ -14,20 +15,20 @@ import static jp.co.technopro.talon.consts.Gojo.GojoMessagesConst.MSG_DUPLICATE_
 import static jp.co.technopro.talon.consts.Gojo.GojoTableNameConst.TABLE_TK_SHINKI;
 import static jp.co.technopro.talon.util.common.DbUtil.isTableEmpty;
 
-public class ChkDuplicateLogic extends AbstractLogicBase {
+public class ChkDuplicateLogic extends GojoAbstractLogicBase {
     @Override
     protected EventResultDto executeLogic() {
-        return null;
+
+        logInfoClassStart(getClass().getSimpleName());
+        return chkDuplicate();
     }
 
-     /**
+    /**
      * TK_SHINKI テーブルに指定された会員番号（no）が既に存在するかをチェックします。
      *
-     * @param conn     DBコネクション
-     * @param paramDto パラメータマップ（"no" キーを含む必要があります）
      * @return 重複があれば success=false とエラーメッセージ、なければ success=true と正常メッセージを含む結果Map
      */
-     private EventResultDto chkDuplicate(Connection conn, TalonParamDto paramDto)  {
+    private EventResultDto chkDuplicate() {
 
         Map<String, Object> params = paramDto.getTargetData();
         Object noObj = params.get(MAP_KEY_NO);

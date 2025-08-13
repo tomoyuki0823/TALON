@@ -18,6 +18,7 @@ public class YotakuService extends GojoAbstractLogicBase {
 
     @Override
     protected EventResultDto executeLogic() {
+        logInfoClassStart(getClass().getSimpleName());
         String eventId = paramDto.getEventId();
         try {
             switch (eventId) {

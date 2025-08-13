@@ -19,6 +19,7 @@ public class ShinkiSimeRenkeiLogic extends GojoAbstractLogicBase {
     @Override
     protected EventResultDto executeLogic() {
         try {
+            logInfoClassStart(getClass().getSimpleName());
             return shinkiSimeRenkei();
         } catch (SQLException e) {
             throw new RuntimeException(e);

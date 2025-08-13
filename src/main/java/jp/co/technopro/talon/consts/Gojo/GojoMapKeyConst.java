@@ -29,8 +29,19 @@ public final class GojoMapKeyConst {
     public static final String MAP_KEY_NO = "no";
 
     /** 会員番号（現職チェック用） */
-    public static final String MAP_GOJYO_TAIKAI_CD = "TAIKAI_CD";
+    public static final String MAP_KEY_GOJYO_TAIKAI_CD = "GOJYO_TAIKAI_CD";
 
+    /** 退職フラグ */
+    public static final String MAP_KEY_TAISYOKU_FLG = "TAISYOKU_FLG";
+
+    /** 退職フラグ */
+    public static final String MAP_KEY_RYOYO_NENGETU = "RYOYO_NENGETU";
+
+    /** 銀行コード */
+    public static final String MAP_KEY_BANK_CD = "BANK_CD";
+
+    /** 支店コード */
+    public static final String MAP_KEY_SHITEN_CD = "SHITEN_CD";
 
     // ==============================
     // 処理・状態系

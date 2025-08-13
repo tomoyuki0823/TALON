@@ -38,4 +38,9 @@ public final class GojoTableNameConst {
     /** 変更管理2 */
     public static final String TABLE_TK_HENKO2 = "TK_HENKO2";
 
+    /** 医療費 */
+    public static final String TABLE_TK_IRYO = "TK_IRYO";
+
+    /** 銀行マスタ */
+    public static final String TABLE_COM_M_BANK = "COM_M_BANK";
 }

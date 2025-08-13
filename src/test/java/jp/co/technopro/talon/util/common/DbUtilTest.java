@@ -1,7 +1,6 @@
 
 package jp.co.technopro.talon.util.common;
 
-import jp.co.technopro.talon.util.common.DbUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

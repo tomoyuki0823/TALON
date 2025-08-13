@@ -1,13 +1,11 @@
-package jp.co.technopro.talon.logic.Gojo.stayDougai;
+package jp.co.technopro.talon.logic.Gojo.iryo;
 
 import jp.co.technopro.talon.dto.common.EventResultDto;
-import jp.co.technopro.talon.dto.common.TalonParamDto;
 import jp.co.technopro.talon.logic.Gojo.common.GojoAbstractLogicBase;
-import jp.co.technopro.talon.logic.common.ExecutableLogic;
 
-import java.sql.Connection;
 
-public class StayDougaiService extends GojoAbstractLogicBase {
+public class IryolService extends GojoAbstractLogicBase {
+
 
     @Override
     protected EventResultDto executeLogic() {
@@ -15,3 +13,4 @@ public class StayDougaiService extends GojoAbstractLogicBase {
         return null;
     }
 }
+

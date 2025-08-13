@@ -27,6 +27,7 @@ public class SetYotakukinYoteiLogic extends GojoAbstractLogicBase {
     @Override
     protected EventResultDto executeLogic() {
 
+        logInfoClassStart(getClass().getSimpleName());
         String tkNo = getTkNo();
 
         if (StringUtil.isNullOrEmpty(tkNo)) return EventResultDto.error(MSG_NON_TK_NO);

@@ -24,6 +24,7 @@ public class SetYotakuInitLogic extends GojoAbstractLogicBase {
     @Override
     protected EventResultDto executeLogic()  {
 
+        logInfoClassStart(getClass().getSimpleName());
         String tkNo = getTkNo();
         String shoriTuki = getShoriTuki();
 

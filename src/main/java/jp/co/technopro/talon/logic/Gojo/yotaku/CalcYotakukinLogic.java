@@ -22,6 +22,8 @@ public class CalcYotakukinLogic extends GojoAbstractLogicBase {
 
     @Override
     protected EventResultDto executeLogic()  {
+
+        logInfoClassStart(getClass().getSimpleName());
         Map<String, Object> paramMap = paramDto.getTargetData();
         String tkNo = getTkNo();
         String honCd = (String) paramMap.get(MAP_KEY_HON_TAISYOKU_CD);
