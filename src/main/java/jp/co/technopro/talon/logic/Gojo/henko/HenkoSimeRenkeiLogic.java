@@ -2,6 +2,7 @@ package jp.co.technopro.talon.logic.Gojo.henko;
 
 import jp.co.technopro.talon.dto.common.EventResultDto;
 import jp.co.technopro.talon.dto.common.TalonParamDto;
+import jp.co.technopro.talon.logic.Gojo.common.GojoAbstractLogicBase;
 import jp.co.technopro.talon.logic.common.AbstractLogicBase;
 
 import java.sql.Connection;
@@ -14,7 +15,7 @@ import static jp.co.technopro.talon.consts.Gojo.GojoMessagesConst.MSG_NON_SHORI_
 import static jp.co.technopro.talon.util.Gojo.GojoDbUtil.getHenkoReflectTargetList;
 import static jp.co.technopro.talon.util.Gojo.GojoDbUtil.upsertMemberRecord;
 
-public class HenkoSimeRenkeiLogic extends AbstractLogicBase {
+public class HenkoSimeRenkeiLogic extends GojoAbstractLogicBase {
     @Override
     protected EventResultDto executeLogic() {
         try {

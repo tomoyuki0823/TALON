@@ -50,7 +50,7 @@ public class ShinkiService extends GojoAbstractLogicBase {
                 processShinkiRecord(conn, paramDto.getCompanyCode(), record);
             }
 
-            updateTkc001(conn, shoriTuki, TK_DVS_SHINKI);
+            updateTkc001(conn, shoriTuki, TK_DVS_SHINKI, paramDto.getCompanyCode());
             return EventResultDto.ok();
 
         } catch (SQLException e) {

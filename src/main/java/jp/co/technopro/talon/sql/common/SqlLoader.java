@@ -1,5 +1,6 @@
 package jp.co.technopro.talon.sql.common;
 
+import jp.co.technopro.logger.TpiLogger;
 import org.w3c.dom.*;
 import javax.xml.parsers.*;
 import java.io.InputStream;
@@ -11,10 +12,12 @@ import java.util.Map;
  */
 public class SqlLoader {
 
+    private static final TpiLogger log = TpiLogger.getLogger(SqlLoader.class);
     protected final Map<String, String> sqlMap = new HashMap<>();
 
     /**
      * クラスパス上のXMLを読み込み、SQLをID付きで保持します。
+     *
      * @param xmlPath XMLファイルのクラスパス相対パス
      */
     public SqlLoader(String xmlPath) {
@@ -42,7 +45,9 @@ public class SqlLoader {
                 }
 
                 sqlMap.put(id, formattedSql);
-                System.out.println("Loaded SQL [" + id + "]:\n" + formattedSql);
+
+                // ▼ INFO → DEBUG に変更（設定で非表示にできるように）
+                log.debug("Loaded SQL [" + id + "]:\n" + formattedSql);
             }
 
         } catch (Exception e) {

@@ -1,5 +1,7 @@
 package jp.co.technopro.talon.util.common;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -80,25 +82,33 @@ public class SafeMapAccessUtil {
      *
      * @param map          入力 Map
      * @param key          キー
-     * @param defaultValue 空や null の場合のデフォルト
+     * @param def 空や null の場合のデフォルト
      * @return 正常な文字列 or デフォルト値
      */
-    public static String getStringOrDefault(Map<String, ?> map, String key, String defaultValue) {
-        Object value = map.get(key);
-        return (value instanceof String) ? (String) value : defaultValue;
+    public static String getStringOrDefault(Map<String, ?> map, String key, String def) {
+        if (map == null || key == null) return def;
+        Object v = map.get(key);
+        if (v == null) return def;
+        if (v instanceof String) return (String) v;
+        return String.valueOf(v);
     }
 
-    /**
-     * Map から文字列を取得します。
-     * 該当キーが存在しない、または値が null である場合は空文字を返します。
-     * 値が String 型でない場合も空文字を返します。
-     *
-     * @param map 入力 Map
-     * @param key 取得対象のキー
-     * @return 文字列（null・非文字列なら空文字）
-     */
+
     public static String getString(Map<String, ?> map, String key) {
-        return getStringOrDefault(map, key, "");
+        return getStringOrDefault(map, key, null);
+    }
+    
+    // 必要なら他型も同様にnull-safeで
+    public static Integer getIntOrDefault(Map<String, ?> map, String key, Integer def) {
+        if (map == null || key == null) return def;
+        Object v = map.get(key);
+        if (v == null) return def;
+        if (v instanceof Number) return ((Number) v).intValue();
+        try {
+            return Integer.parseInt(String.valueOf(v).trim());
+        } catch (NumberFormatException e) {
+            return def;
+        }
     }
 
     /**
@@ -123,7 +133,7 @@ public class SafeMapAccessUtil {
      * @return 非 null な Map
      */
     public static Map<String, Object> getMap(Map<String, Object> map) {
-        return (map != null) ? map : java.util.Collections.emptyMap();
+        return (map != null) ? map : Collections.emptyMap();
     }
 
 
@@ -135,11 +145,11 @@ public class SafeMapAccessUtil {
      * @return List型の値（ない場合は空の Optional）
      */
     @SuppressWarnings("unchecked")
-    public static <K> Optional<java.util.List<Map<String, Object>>> getList(Map<K, ?> map, K key) {
+    public static <K> Optional<List<Map<String, Object>>> getList(Map<K, ?> map, K key) {
         return Optional.ofNullable(map)
                 .map(m -> m.get(key))
-                .filter(v -> v instanceof java.util.List)
-                .map(v -> (java.util.List<Map<String, Object>>) v);
+                .filter(v -> v instanceof List)
+                .map(v -> (List<Map<String, Object>>) v);
     }
 
     /**

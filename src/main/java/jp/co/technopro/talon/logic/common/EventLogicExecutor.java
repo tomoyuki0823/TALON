@@ -1,6 +1,6 @@
 package jp.co.technopro.talon.logic.common;
 
-import jp.co.technopro.logger.TalonLogger;
+import jp.co.technopro.logger.TpiLogger;
 import jp.co.technopro.talon.dto.common.EventResultDto;
 import jp.co.technopro.talon.dto.common.TalonParamDto;
 import jp.co.technopro.talon.mapper.common.TalonParamMapper;
@@ -8,6 +8,7 @@ import jp.co.technopro.talon.mapper.common.TalonParamMapper;
 import java.sql.Connection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static jp.co.technopro.talon.consts.tln.TlnMessageConst.*;
 import static jp.co.technopro.talon.consts.tln.TlnSqlXmlKeyConst.*;
@@ -18,134 +19,149 @@ import static jp.co.technopro.talon.util.common.DbUtil.selectById;
 /**
  * イベント実行制御を行うロジッククラス。
  * <p>
- * 機能ID（FUNC_ID）とイベントID（EVENT_ID）に対応する複数の Java ロジックを
- * {@code TPI_M_FUNC_EVENT} → {@code TPI_M_JAVA_LOGIC} テーブル定義に基づいて
- * 順次呼び出します。
- * </p>
+ * 機能ID（FUNC_ID）・イベントID（EVENT_ID）に紐づく複数の Java ロジックを
+ * TPI_M_FUNC_EVENT → TPI_M_JAVA_LOGIC の定義順に実行する。
+ * <br>
+ * 例外時のロールバックは呼び出し元で制御する前提。
  */
 public class EventLogicExecutor {
 
+    private static final TpiLogger log = TpiLogger.getLogger(EventLogicExecutor.class);
+
+    /** リフレクション対象クラスの簡易キャッシュ */
+    private static final ConcurrentHashMap<String, Class<?>> CLASS_CACHE = new ConcurrentHashMap<>();
+
     /**
-     * 指定された機能ID・イベントIDに対応する Java ロジックを順番に呼び出します。
+     * 指定された機能ID・イベントIDに対応する Java ロジックを順番に呼び出す。
      *
      * @param conn     DB接続
      * @param paramMap パラメータマップ。FUNC_ID, EVENT_ID, 各種BLOCK情報などを含む。
      * @return 実行結果（status: true/false, message: 実行メッセージ）
-     * @throws Exception クラスロード・メソッド実行などで発生する任意の例外
      */
-    public static EventResultDto executeEventLogic(Connection conn, Map<String, Object> paramMap) throws Exception {
+    public static EventResultDto executeEventLogic(Connection conn, Map<String, Object> paramMap) {
+        final String funcId;
+        final String eventId;
 
         try {
-            TalonLogger.logInfo(paramMap, "=== paramMap 内容 ===");
-            for (Map.Entry<String, Object> entry : paramMap.entrySet()) {
-                String key = entry.getKey();
-                Object val = entry.getValue();
-                System.out.println(key + " => " + (val != null ? val.getClass().getName() + ": " + val : "null"));
+            log.classStart("EventLogicExecutor");
+            log.methodStart("executeEventLogic");
+            log.info("=== paramMap 内容 ===");
+            if (paramMap != null) {
+                for (Map.Entry<String, Object> e : paramMap.entrySet()) {
+                    Object v = e.getValue();
+                    log.info(e.getKey() + " => " + (v != null ? (v.getClass().getName() + ": " + v) : "null"));
+                }
             }
-            System.out.println("=== paramMap END ===");
+            log.info("=== paramMap END ===");
 
-            String funcId = getRequiredValue(paramMap, MAP_KEY_FUNC_ID);
-            String eventId = getRequiredValue(paramMap, MAP_KEY_EVENT_ID);
+            funcId = getRequiredValue(paramMap, MAP_KEY_FUNC_ID);
+            eventId = getRequiredValue(paramMap, MAP_KEY_EVENT_ID);
 
-            TalonLogger.logInfo(paramMap, MSG_FUNC_ID_LOG + funcId);
-            TalonLogger.logInfo(paramMap, MSG_EVENT_ID_LOG + eventId);
+            log.info(MSG_FUNC_ID_LOG + funcId);
+            log.info(MSG_EVENT_ID_LOG + eventId);
 
             TalonParamDto paramDto = TalonParamMapper.fromMap(paramMap);
+            log.info(MSG_DTO_SUCCESS);
 
-            TalonLogger.logInfo(paramMap, MSG_DTO_SUCCESS);
-
-            List<Map<String, Object>> funcEventList = null;
-
+            // イベント定義行を取得
+            final List<Map<String, Object>> funcEventList;
             if (!MAP_KEY_BUTTOM.equals(eventId)) {
-                funcEventList = selectById(conn, SQL_KEY_TPI_M_FUNC_EVENT, COMPANY_CD_COMMON, funcId, eventId).getMapListResult();
+                funcEventList = selectById(conn, SQL_KEY_TPI_M_FUNC_EVENT, COMPANY_CD_COMMON, funcId, eventId)
+                        .getMapListResult();
             } else {
                 String buttomId = getRequiredValue(paramMap, MAP_KEY_BUTTOM_ID);
-                funcEventList = selectById(conn, SQL_KEY_TPI_M_FUNC_EVENT_BUTTOM, COMPANY_CD_COMMON, funcId, eventId, buttomId).getMapListResult();
+                funcEventList = selectById(conn, SQL_KEY_TPI_M_FUNC_EVENT_BUTTOM, COMPANY_CD_COMMON, funcId, eventId, buttomId)
+                        .getMapListResult();
             }
 
-            for (Map<String, Object> row : funcEventList) {
+            if (funcEventList == null || funcEventList.isEmpty()) {
+                log.warn("イベントに紐づくJavaロジック定義が見つかりませんでした。funcId=" + funcId + ", eventId=" + eventId);
+                // 何も実行せず正常終了（要件に応じて error にしてもよい）
+                return EventResultDto.ok("実行対象のロジック定義がありませんでした。");
+            }
 
-                System.out.println("=== Connection isClosed: " + conn.isClosed() + " ===");
-                executeLogicIfActive(conn, row, paramDto);
+            // 定義順に実行。失敗したら即終了（ポリシーA）
+            for (Map<String, Object> row : funcEventList) {
+                EventResultDto result = executeLogicIfActive(conn, row, paramDto);
+                if (result != null && !result.getStatus()) {
+                    log.warn("ロジック実行中断: status=false logicId=" + paramDto.getLogicId());
+                    return result; // 先頭の失敗を返却
+                }
             }
 
             return EventResultDto.ok();
 
+        } catch (IllegalArgumentException iae) {
+            log.error("必須パラメータ不足: " + iae.getMessage());
+            return EventResultDto.error(MSG_JAVA_LOGIC_ERROR + iae.getMessage());
+
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Javaロジック実行で例外発生: " + e.getMessage(), e);
             return EventResultDto.error(MSG_JAVA_LOGIC_ERROR + e.getMessage());
         }
     }
 
     /**
-     * ロジックが有効（IS_ACTIVE=1）の場合に限り、指定されたロジックを実行します。
+     * ロジックが有効（IS_ACTIVE=1）の場合に限り、指定されたロジックを実行する。
      *
-     * @param conn         DB接続
-     * @param funcEventRow ロジックIDを含むイベント行（TPI_M_FUNC_EVENT）
-     * @param paramDto     実行パラメータ（TalonParamDto形式）
-     * @throws Exception クラス生成・メソッド呼び出しエラー
+     * @return 実行結果。スキップ時は null（= 何もしていない）
      */
-    private static void executeLogicIfActive(Connection conn, Map<String, Object> funcEventRow, TalonParamDto paramDto) throws Exception {
+    private static EventResultDto executeLogicIfActive(Connection conn, Map<String, Object> funcEventRow, TalonParamDto paramDto) throws Exception {
         String logicId = (String) funcEventRow.get(MAP_KEY_LOGIC_ID);
         paramDto.setLogicId(logicId);
 
-        Map<String, Object> logicRow = selectById(conn, SQL_KEY_TPI_M_JAVA_LOGIC, "common", logicId).getMapListResult()
-                .stream().findFirst().orElse(null);
+        // 会社コードは COMMON に統一
+        Map<String, Object> logicRow = selectById(conn, SQL_KEY_TPI_M_JAVA_LOGIC, COMPANY_CD_COMMON, logicId)
+                .getMapListResult()
+                .stream()
+                .findFirst()
+                .orElse(null);
 
         if (logicRow == null || !MAP_KEY_IS_ACTIVE_ON.equals(String.valueOf(logicRow.get(MAP_KEY_IS_ACTIVE)).trim())) {
-            System.out.println("LogicID [" + logicId + "] は無効または存在しないためスキップします。");
-            return;
+            log.info("LogicID [" + logicId + "] は無効または存在しないためスキップします。");
+            return null;
         }
 
-        invokeLogic(conn, logicRow, paramDto, logicId);
+        return invokeLogic(conn, logicRow, paramDto, logicId);
     }
 
     /**
-     * Javaクラスおよびメソッドをリフレクションで呼び出し、ロジックを実行します。
-     * <p>
-     * 呼び出し対象クラスは {@link jp.co.technopro.talon.logic.common.AbstractLogicBase} を継承している必要があります。
-     *
-     * @param conn     DB接続
-     * @param logicRow 実行対象ロジックの定義（TPI_M_JAVA_LOGIC）
-     * @param paramDto 実行時引数（TalonParamDto）
-     * @param logicId  ロジックID（ログ出力用）
-     * @return 実行結果（EventResultDto）
-     * @throws Exception クラスロード・インスタンス生成・メソッド実行時の任意の例外
+     * Javaクラスをリフレクションで呼び出し、ロジックを実行する。
+     * 呼び出し対象は AbstractLogicBase を継承している必要がある。
      */
     private static EventResultDto invokeLogic(Connection conn, Map<String, Object> logicRow, TalonParamDto paramDto, String logicId) throws Exception {
         String className = (String) logicRow.get(MAP_KEY_CLASS_NAME);
 
-        // クラスをロードしてインスタンス化
-        Class<?> clazz = Class.forName(className);
+        // クラスロード（キャッシュ利用）
+        Class<?> clazz = CLASS_CACHE.computeIfAbsent(className, k -> {
+            try { return Class.forName(k); }
+            catch (ClassNotFoundException e) { throw new RuntimeException(e); }
+        });
+
         Object instance = clazz.getDeclaredConstructor().newInstance();
 
-        // AbstractLogicBase を継承していることを確認
         if (!(instance instanceof AbstractLogicBase)) {
             throw new IllegalStateException("クラス " + className + " は AbstractLogicBase を継承していません。");
         }
 
-        // 実行（runはスーパークラスで実装済）
         AbstractLogicBase logic = (AbstractLogicBase) instance;
         EventResultDto result = logic.run(conn, paramDto);
 
-        System.out.println("Logic [" + logicId + "] executed. Result: " + result);
+        log.info("Logic [" + logicId + "] executed. status=" + result.getStatus()
+                + (result.getMessage() != null ? (", msg=" + result.getMessage()) : ""));
         return result;
     }
 
     /**
-     * Map から必須キーを取得し、未設定の場合は例外をスローします。
-     *
-     * @param map 対象のMap
-     * @param key 必須キー
-     * @return 値（null/空文字不可）
-     * @throws IllegalArgumentException 値が null または空文字の場合
+     * Map から必須キーを取得し、未設定の場合は例外をスローする（String専用）。
      */
     private static String getRequiredValue(Map<String, Object> map, String key) {
-        String value = (String) map.get(key);
+        if (map == null) throw new IllegalArgumentException("paramMap が未設定です。");
+        Object v = map.get(key);
+        String value = (v instanceof String) ? (String) v : null;
         if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException(key + " が未指定です。");
         }
-        return value;
+        return value.trim();
     }
-
 }

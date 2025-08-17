@@ -85,7 +85,7 @@ public class GojoDbUtil {
      * @throws SQLException           データベース接続やSQL実行時にエラーが発生した場合
      * @throws ClassNotFoundException JDBCドライバの読み込みに失敗した場合など
      */
-    public static TkMemberDto setTkMemberDto(Connection conn, String tkNo, TalonParamDto dto)  {
+    public static TkMemberDto setTkMemberDto(Connection conn, String tkNo, TalonParamDto dto) {
         List<Map<String, Object>> tokMapList = selectById(conn, SQL_TK_MEMBER, dto.getCompanyCode(), tkNo).getMapListResult();
         if (tokMapList.isEmpty()) return null;
 
@@ -110,7 +110,7 @@ public class GojoDbUtil {
      * @param shoriTuki 処理月
      * @return true: すでに存在している（＝履歴あり）, false: 未登録
      */
-    public static boolean isCntHenko2(Connection conn, String tkNo, String shoriTuki, TalonParamDto dto)  {
+    public static boolean isCntHenko2(Connection conn, String tkNo, String shoriTuki, TalonParamDto dto) {
         Map<String, Object> whereMap = Map.of(
                 MAP_KEY_TK_NO, tkNo,
                 MAP_KEY_SHORI_TUKI, shoriTuki
@@ -222,7 +222,7 @@ public class GojoDbUtil {
      * @param shoriTuki 処理対象月（SHORI_TUKI）
      * @param companyCd 会社コード（DB接続が null の場合やテーブル依存切替に使用）
      */
-    public static void insTkYotaku(Connection conn, String tkNo, String shoriTuki, String companyCd)  {
+    public static void insTkYotaku(Connection conn, String tkNo, String shoriTuki, String companyCd) {
         Map<String, Object> insMap = new HashMap<>();
         insMap.put(MAP_KEY_TK_NO, tkNo);
         insMap.put(MAP_KEY_SHORI_TUKI, shoriTuki);
@@ -319,9 +319,21 @@ public class GojoDbUtil {
      * @param tkDvs     区分（TK_DVS）
      * @throws SQLException SQLエラーが発生した場合
      */
-    public static void updateTkc001(Connection conn, String shoriTuki, String tkDvs) throws SQLException {
-        String sql = sqlLoader.get(SQL_KEY_UPDATE_TKC001);
-        DbUtil.update(conn, sql, shoriTuki, tkDvs);
+    public static void updateTkc001(Connection conn, String shoriTuki, String tkDvs, String conpanycd) throws SQLException {
+
+        Map<String, Object> valueMap = new HashMap<>();
+        valueMap.put(MAP_KEY_SHORI_TUKI, shoriTuki);
+        valueMap.put(MAP_KEY_TK_DVS, tkDvs);
+        valueMap.put(MAP_KEY_SIME_STATUS, "2");
+
+        Map<String, Object> whereMap = new HashMap<>();
+        whereMap.put(MAP_KEY_SHORI_TUKI, shoriTuki);
+        whereMap.put(MAP_KEY_TK_DVS, tkDvs);
+        whereMap.put(MAP_KEY_SIME_STATUS, "2");
+
+
+        DbUtil.updateByMapEx(conn, conpanycd, "TKC001", valueMap, whereMap, true);
+
     }
 
     /**

@@ -30,9 +30,10 @@ public class SetIryoAlert extends GojoAbstractLogicBase {
 
     private EventResultDto setIryoAlert(TkMemberDto memberDto) {
 
-        setRyoyoNengetuSoft();
-        setJgyChk(memberDto);
-        setRyoDtChk(memberDto);
+        logInfoMethodStart();
+        // setRyoyoNengetuSoft();
+        //setJgyChk(memberDto);
+        //setRyoDtChk(memberDto);
         setGinko(memberDto);
         return EventResultDto.ok();
     }
@@ -59,6 +60,7 @@ public class SetIryoAlert extends GojoAbstractLogicBase {
      */
     private EventResultDto setRyoyoNengetuSoft() {
 
+        logInfoMethodStart();
         Map<String, Object> map = paramDto.getTargetData();
         String syoriTuki    = SafeMapAccessUtil.getString(map, MAP_KEY_SHORI_TUKI);
         String ryoyoNengetu = SafeMapAccessUtil.getString(map, MAP_KEY_RYOYO_NENGETU);
@@ -110,6 +112,9 @@ public class SetIryoAlert extends GojoAbstractLogicBase {
      * @return 常に {@code EventResultDto.ok()}
      */
     private EventResultDto setJgyChk(TkMemberDto memberDto) {
+
+        logInfoMethodStart();
+
         if (!TK_DVS_JGY_KBN_2.equals(memberDto.getJgyKbn())) {
             return EventResultDto.ok();
         }
@@ -153,6 +158,7 @@ public class SetIryoAlert extends GojoAbstractLogicBase {
      */
     private EventResultDto setRyoDtChk(TkMemberDto memberDto) {
 
+        logInfoMethodStart();
         Map<String, Object> map = paramDto.getTargetData();
         String zoku = SafeMapAccessUtil.getString(map, MAP_KEY_ZOKU);
 
@@ -226,6 +232,7 @@ public class SetIryoAlert extends GojoAbstractLogicBase {
      */
     private EventResultDto setGinko(TkMemberDto memberDto) {
 
+        logInfoMethodStart();
         // 入力取得
         final String ginkouCd = memberDto.getGinkouCd();
         final String shitenCd = memberDto.getShitenCd();
