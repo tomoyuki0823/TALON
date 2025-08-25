@@ -17,6 +17,8 @@ public class IryoChkRyoyoShiki extends GojoAbstractLogicBase {
     protected EventResultDto executeLogic() {
         logInfoMethodStart();
 
+        if (paramDto.isTlnIsDelete()) return EventResultDto.ok();
+        if (paramDto.isTlnIsUpdate()) return EventResultDto.ok();
         // 先に targetData から必要最小限だけ取り出す（null-safe アクセサ推奨）
         Map<String, Object> map = getTargetData();
         String zoku = SafeMapAccessUtil.getString(map, MAP_KEY_ZOKU);

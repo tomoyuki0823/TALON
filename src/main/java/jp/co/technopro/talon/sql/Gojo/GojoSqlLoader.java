@@ -4,6 +4,6 @@ import jp.co.technopro.talon.sql.common.SqlLoader;
 
 public class GojoSqlLoader extends SqlLoader {
     public GojoSqlLoader() {
-        super("/sql/gojo/common.xml");
+        super("/sql/Gojo/common.xml");
     }
 }

@@ -970,7 +970,7 @@ public class DbUtil {
      * @return SqlResult（削除件数が affectedRows に格納される）
      * @throws SQLException SQL実行時の例外
      */
-    public static SqlResult deleteByMapEx(Connection conn, String table, Map<String, Object> data,
+    public static int deleteByMapEx(Connection conn, String table, Map<String, Object> data,
                                           List<String> whereKeys, String companyCd) throws SQLException {
 
         boolean shouldClose = false;
@@ -995,7 +995,7 @@ public class DbUtil {
             SqlResult result = new SqlResult();
             result.setAffectedRows(affected);
             result.setSize(affected);
-            return result;
+            return affected;
         } finally {
             if (shouldClose && actualConn != null) {
                 try {

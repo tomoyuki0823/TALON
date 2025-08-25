@@ -17,6 +17,9 @@ public final class GojoTableNameConst {
     /** 与託情報本体（TK_YOTAKU） */
     public static final String TABLE_TK_YOTAKU = "TK_YOTAKU";
 
+    /** 預託金 送金情報（TK_YOTAKU_02） */
+    public static final String TABLE_TK_YOTAKU_02 = "TK_YOTAKU02";
+
     /** 会員基本情報テーブル */
     public static final String TABLE_TK_MEMBER = "TK_MEMBER";
 

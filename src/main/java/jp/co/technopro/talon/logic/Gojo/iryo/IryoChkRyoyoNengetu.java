@@ -44,6 +44,9 @@ public class IryoChkRyoyoNengetu extends GojoAbstractLogicBase {
     private EventResultDto setRyoyoNengetuSoft() {
 
         logInfoMethodStart();
+
+        if (paramDto.isTlnIsDelete()) return EventResultDto.ok();
+        if (paramDto.isTlnIsUpdate()) return EventResultDto.ok();
         Map<String, Object> map = paramDto.getTargetData();
         String syoriTuki = SafeMapAccessUtil.getString(map, MAP_KEY_SHORI_TUKI);
         String ryoyoNengetu = SafeMapAccessUtil.getString(map, MAP_KEY_RYOYO_NENGETU);

@@ -24,5 +24,12 @@ public class GojoCodeValuesConst {
 
     public static final String FLG_ON = "1";
 
+    /** 特別会員事業区分 1:申請前 */
+    public static final String TK_DVS_SIME_STATUS_1 = "1";
 
+    /** 特別会員事業区分 2:実施済(送金データ生成済) */
+    public static final String TK_DVS_SIME_STATUS_2 = "2";
+
+    /** 特別会員事業区分 3:送金データ確認 */
+    public static final String TK_DVS_SIME_STATUS_3 = "3";
 }

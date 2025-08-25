@@ -47,6 +47,6 @@ public class SetYotakuInitLogic extends GojoAbstractLogicBase {
                 MAP_KEY_TK_NO, tkNo,
                 MAP_KEY_SHORI_TUKI, shoriTuki
         );
-        return !isTableEmpty(conn, TABLE_TK_YOTAKU, where, companyCd);
+        return isTableEmpty(conn, TABLE_TK_YOTAKU, where, companyCd);
     }
 }

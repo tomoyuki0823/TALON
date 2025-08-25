@@ -4,21 +4,22 @@ import jp.co.technopro.talon.dto.common.EventResultDto;
 import jp.co.technopro.talon.dto.common.TalonParamDto;
 import jp.co.technopro.talon.logic.Gojo.henko.HenkoSimeRenkeiLogic;
 import jp.co.technopro.talon.logic.Gojo.shinki.ShinkiSimeRenkeiLogic;
+import jp.co.technopro.talon.logic.Gojo.yotaku.CalcYotakukinLogic;
+import jp.co.technopro.talon.logic.Gojo.yotaku.CreateYotakuSokinData;
+import jp.co.technopro.talon.logic.Gojo.yotaku.YotakuUpdateSimeFinal;
 import jp.co.technopro.talon.util.common.SafeMapAccessUtil;
 
 import java.sql.Connection;
 import java.util.Map;
 
-import static jp.co.technopro.talon.consts.Gojo.GojoMapKeyConst.MAP_KEY_SHORI_TUKI;
-import static jp.co.technopro.talon.consts.Gojo.GojoMapKeyConst.MAP_KEY_TK_DVS;
+import static jp.co.technopro.talon.consts.Gojo.GojoCodeValuesConst.*;
+import static jp.co.technopro.talon.consts.Gojo.GojoMapKeyConst.*;
 import static jp.co.technopro.talon.consts.Gojo.GojoMessagesConst.MSG_NON_SHORI_TUKI;
-import static jp.co.technopro.talon.consts.Gojo.GojoCodeValuesConst.TK_DVS_SHINKI;
-import static jp.co.technopro.talon.consts.Gojo.GojoCodeValuesConst.TK_DVS_HENKO;
-import static jp.co.technopro.talon.consts.Gojo.GojoCodeValuesConst.TK_DVS_YOTAKU;
 
 public final class GojoSimeRenkeiDispatcher {
 
-    private GojoSimeRenkeiDispatcher() {}
+    private GojoSimeRenkeiDispatcher() {
+    }
 
     /**
      * Nashorn から渡された DTO をもとに TK_DVS のみで分岐します。
@@ -50,11 +51,14 @@ public final class GojoSimeRenkeiDispatcher {
         final Map<String, Object> target = paramDto.getTargetData(); // null 許容
         final String tkDvs = firstNonBlank(
                 SafeMapAccessUtil.getString(target, MAP_KEY_TK_DVS),
-                SafeMapAccessUtil.getString(cond,   MAP_KEY_TK_DVS)
+                SafeMapAccessUtil.getString(cond, MAP_KEY_TK_DVS)
         );
+
         if (tkDvs == null) {
             return EventResultDto.error("TK_DVS が未指定です。");
         }
+
+        final String simeDvs = SafeMapAccessUtil.getString(target, MAP_KEY_SIME_STATUS);
 
         // --- TK_DVS だけで分岐 ---
         switch (tkDvs) {
@@ -65,9 +69,16 @@ public final class GojoSimeRenkeiDispatcher {
                 return new HenkoSimeRenkeiLogic().run(conn, paramDto);
 
             case TK_DVS_YOTAKU:
-                // 予告: 預託実装後に差し替え
-                // return new YotakuSimeRenkeiLogic().run(conn, paramDto);
-                return EventResultDto.error("預託の締め連携は未実装です。");
+
+                switch (simeDvs) {
+                    case TK_DVS_SIME_STATUS_1:
+                        return new CreateYotakuSokinData().run(conn, paramDto);
+                    case TK_DVS_SIME_STATUS_2:
+                        return new YotakuUpdateSimeFinal().run(conn, paramDto);
+                    default:
+                        return EventResultDto.ok();
+                }
+
 
             default:
                 return EventResultDto.error("未対応のTK_DVSです: " + tkDvs);

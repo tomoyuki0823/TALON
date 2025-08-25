@@ -41,7 +41,6 @@ public class GojoDbUtil {
         return DbUtil.selectOne(conn, TABLE_TK_MEMBER, null, whereMap, null, dto.getCompanyCode()).getMapResult();
     }
 
-
     /**
      * TK_SHIHARAI テーブルから特定の支払情報を1件取得します。
      *
@@ -55,7 +54,6 @@ public class GojoDbUtil {
         Map<String, Object> whereMap = Map.of(MAP_KEY_TK_NO, tkNo);
         return DbUtil.selectOne(conn, TABLE_TK_SHIHARAI, null, whereMap, null, dto.getCompanyCode()).getMapResult();
     }
-
 
     /**
      * TKC001 テーブルから、指定された処理月（SHORI_TUKI）に一致する締めデータを取得します。
@@ -147,7 +145,6 @@ public class GojoDbUtil {
         Map<String, Object> whereMap = Map.of(MAP_KEY_TK_NO, tkNo);
         updateByMapEx(conn, dto.getCompanyCode(), TABLE_TK_MEMBER, record, whereMap, true);
     }
-
 
     /**
      * 預託金マスタ（TK_M_YOTEKUKIN_YOTEI）を全件取得します。
@@ -319,20 +316,22 @@ public class GojoDbUtil {
      * @param tkDvs     区分（TK_DVS）
      * @throws SQLException SQLエラーが発生した場合
      */
-    public static void updateTkc001(Connection conn, String shoriTuki, String tkDvs, String conpanycd) throws SQLException {
+    public static void updateTkc001(Connection conn, String shoriTuki, String tkDvs, String targetSimeStatus,String conpanycd)  {
 
         Map<String, Object> valueMap = new HashMap<>();
         valueMap.put(MAP_KEY_SHORI_TUKI, shoriTuki);
         valueMap.put(MAP_KEY_TK_DVS, tkDvs);
-        valueMap.put(MAP_KEY_SIME_STATUS, "2");
+        valueMap.put(MAP_KEY_SIME_STATUS, targetSimeStatus);
 
         Map<String, Object> whereMap = new HashMap<>();
         whereMap.put(MAP_KEY_SHORI_TUKI, shoriTuki);
         whereMap.put(MAP_KEY_TK_DVS, tkDvs);
-        whereMap.put(MAP_KEY_SIME_STATUS, "2");
 
-
-        DbUtil.updateByMapEx(conn, conpanycd, "TKC001", valueMap, whereMap, true);
+        try {
+            DbUtil.updateByMapEx(conn, conpanycd, "TKC001", valueMap, whereMap, true);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
 
     }
 
@@ -432,6 +431,5 @@ public class GojoDbUtil {
                 companyCd
         );
     }
-
 
 }

@@ -72,7 +72,7 @@ public class ShinkiSimeRenkeiLogic extends GojoAbstractLogicBase {
             success++;
         }
 
-        updateTkc001(conn, shoriTuki, TK_DVS_SHINKI, companyCd);
+        updateTkc001(conn, shoriTuki, TK_DVS_SHINKI,"2", companyCd);
 
         info("新規締め連携 完了: 対象=" + shinkiList.size() + " 件, 成功=" + success
                 + ", 処理月=" + shoriTuki + ", company=" + companyCd);

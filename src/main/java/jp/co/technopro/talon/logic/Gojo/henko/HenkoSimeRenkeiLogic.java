@@ -10,10 +10,11 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
+import static jp.co.technopro.talon.consts.Gojo.GojoCodeValuesConst.TK_DVS_SHINKI;
+import static jp.co.technopro.talon.consts.Gojo.GojoCodeValuesConst.TK_DVS_SIME_STATUS_2;
 import static jp.co.technopro.talon.consts.Gojo.GojoMapKeyConst.MAP_KEY_SHORI_TUKI;
 import static jp.co.technopro.talon.consts.Gojo.GojoMessagesConst.MSG_NON_SHORI_TUKI;
-import static jp.co.technopro.talon.util.Gojo.GojoDbUtil.getHenkoReflectTargetList;
-import static jp.co.technopro.talon.util.Gojo.GojoDbUtil.upsertMemberRecord;
+import static jp.co.technopro.talon.util.Gojo.GojoDbUtil.*;
 
 public class HenkoSimeRenkeiLogic extends GojoAbstractLogicBase {
     @Override
@@ -62,6 +63,8 @@ public class HenkoSimeRenkeiLogic extends GojoAbstractLogicBase {
                 // TK_NOをキーにレコード更新（該当がなければINSERT可能オプション true）
                 upsertMemberRecord(conn, record, paramDto);
             }
+
+            updateTkc001(conn, shoriTuki, TK_DVS_SHINKI, TK_DVS_SIME_STATUS_2, paramDto.getCompanyCode());
 
             return EventResultDto.ok();
 

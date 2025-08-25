@@ -20,6 +20,8 @@ public class IryoChkDuplicateRyoyo extends GojoAbstractLogicBase {
 
     private EventResultDto chkDuplicateRyoyoDt() {
 
+        if (paramDto.isTlnIsDelete()) return EventResultDto.ok();
+        if (paramDto.isTlnIsUpdate()) return EventResultDto.ok();
         Map<String, Object> map = getTargetData();
         String zoku = SafeMapAccessUtil.getString(map, MAP_KEY_ZOKU);
         String ryoyoNengetu = SafeMapAccessUtil.getString(map, MAP_KEY_RYOYO_NENGETU);

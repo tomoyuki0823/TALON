@@ -75,6 +75,8 @@ public class IryoSetGinko extends GojoAbstractLogicBase {
 
         logInfoMethodStart();
 
+        if (paramDto.isTlnIsDelete()) return EventResultDto.ok();
+        if (paramDto.isTlnIsUpdate()) return EventResultDto.ok();
         // 入力取得（null→""へ正規化し trim）
         final String ginkouCd = trimOrEmpty(memberDto.getGinkouCd());
         final String shitenCd = trimOrEmpty(memberDto.getShitenCd());

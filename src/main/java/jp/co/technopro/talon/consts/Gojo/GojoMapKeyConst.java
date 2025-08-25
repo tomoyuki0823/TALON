@@ -66,6 +66,12 @@ public final class GojoMapKeyConst {
     /** 弔慰金金額 */
     public static final String MAP_KEY_TYOIKIN = "TYOIKIN";
 
+    /** 弔慰金金額 */
+    public static final String MAP_KEY_KYUFU_DVS = "KYUFU_DVS";
+
+    /** 弔慰金金額 */
+    public static final String MAP_KEY_KINGAKU = "KINGAKU";
+
 
     // ==============================
     // 汎用メッセージ
