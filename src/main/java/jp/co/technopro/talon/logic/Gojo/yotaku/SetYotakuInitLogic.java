@@ -22,7 +22,7 @@ import static jp.co.technopro.talon.util.common.DbUtil.isTableEmpty;
 public class SetYotakuInitLogic extends GojoAbstractLogicBase {
 
     @Override
-    protected EventResultDto executeLogic()  {
+    protected EventResultDto executeLogic() {
 
         logInfoClassStart(getClass().getSimpleName());
         String tkNo = getTkNo();
@@ -32,17 +32,17 @@ public class SetYotakuInitLogic extends GojoAbstractLogicBase {
             return EventResultDto.error(MSG_NON_TK_OBJ);
         }
 
-        if (isYotakuAlreadyRegistered(tkNo, shoriTuki, paramDto.getCompanyCode())) {
+        if (!isYotakuAlreadyRegistered(tkNo, shoriTuki, paramDto.getCompanyCode())) {
             return EventResultDto.ok();
         }
 
-        insTkYotaku(conn, paramDto.getCompanyCode(), tkNo, shoriTuki);
+        insTkYotaku(conn, tkNo, shoriTuki, paramDto.getCompanyCode());
         TalonLogger.logInfo(paramDto, "預託情報登録完了");
 
         return EventResultDto.ok();
     }
 
-    private boolean isYotakuAlreadyRegistered(String tkNo, String shoriTuki, String companyCd)  {
+    private boolean isYotakuAlreadyRegistered(String tkNo, String shoriTuki, String companyCd) {
         Map<String, Object> where = Map.of(
                 MAP_KEY_TK_NO, tkNo,
                 MAP_KEY_SHORI_TUKI, shoriTuki

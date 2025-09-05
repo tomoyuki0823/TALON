@@ -31,16 +31,6 @@ public class IryoChkRyoyoNengetu extends GojoAbstractLogicBase {
      *
      * @return 常に正常（OK）結果
      */
-    /**
-     * 処理月（syoriTuki）と療養年月（ryoyoNengetu）の月差チェックを行い、
-     * しきい値（38か月）以上ならDBにフラグを立てる「ソフトエラー」実装。
-     * <p>
-     * ・例外は投げず、常に正常系の EventResult を返す。<br>
-     * ・入力が未設定/形式不正（yyyyMM 以外）はフラグ対象にしない（スルー）。<br>
-     * ・トランザクションは呼び出し側ポリシー（外側）に従う。
-     *
-     * @return 常に正常（OK）結果
-     */
     private EventResultDto setRyoyoNengetuSoft() {
 
         logInfoMethodStart();

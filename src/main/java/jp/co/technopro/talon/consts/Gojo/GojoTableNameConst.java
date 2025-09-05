@@ -46,4 +46,10 @@ public final class GojoTableNameConst {
 
     /** 銀行マスタ */
     public static final String TABLE_COM_M_BANK = "COM_M_BANK";
+
+    /** 送金マスタ */
+    public static final String TABLE_TK_T_IRYO_SOKIN = "TK_T_IRYO_SOKIN";
+
+    /** 長寿検索済み一覧 */
+    public static final String TABLE_TK_CHOJU_01 = "TK_CHOJU_01";
 }

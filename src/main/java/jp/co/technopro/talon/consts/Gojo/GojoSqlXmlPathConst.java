@@ -12,4 +12,7 @@ public class GojoSqlXmlPathConst {
 
     /** 締データ作成（SQL_COMMON 用） */
     public static final String SQL_GOJO_COMMON = "gojo-common.xml";
+
+    /** 長寿祝い金で検索する **/
+    public static final String SQL_GOJO_CHOJU_IWAI = "sql/Gojo/choju_iwai_kin.xml";
 }

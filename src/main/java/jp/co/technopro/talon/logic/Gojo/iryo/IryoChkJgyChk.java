@@ -34,16 +34,27 @@ public class IryoChkJgyChk extends GojoAbstractLogicBase {
         if (paramDto.isTlnIsDelete()) return EventResultDto.ok();
         if (paramDto.isTlnIsUpdate()) return EventResultDto.ok();
 
-        // nullセーフ：会員情報未取得や区分未設定は「判定不可」扱いでOK継続
+        // nullセーフ：会員情報未取得は「判定不可」扱いでOK継続
         if (memberDto == null) return EventResultDto.ok();
 
-        if (memberDto.getJgyKbn() == null)
-            return EventResultDto.error("特別会員番号 : " + getTkNo() + " 事業区分が未設定の会員様です。");
+        // 事業区分を取得
+        String jgyKbn = memberDto.getJgyKbn();
 
-        if (TK_DVS_JGY_KBN_2.equals(memberDto.getJgyKbn())) {
-            return EventResultDto.error("特別会員番号 : " + getTkNo() + " 事業区分が生きがいのため対象外です。");
+        // 事業区分「null」は、制度改定前の会員
+        // 現在の区分体系は「0」と同義なので「null → 0」と補正
+        if (jgyKbn == null) {
+            jgyKbn = "0";
+            memberDto.setJgyKbn(jgyKbn);
         }
 
+        // 事業区分 = 2（生きがい）は対象外
+        if (TK_DVS_JGY_KBN_2.equals(jgyKbn)) {
+            return EventResultDto.error(
+                    "特別会員番号 : " + getTkNo() + " 事業区分が生きがいのため対象外です。"
+            );
+        }
+
+        // それ以外（null, 0, 1）は対象
         return EventResultDto.ok();
     }
 }
