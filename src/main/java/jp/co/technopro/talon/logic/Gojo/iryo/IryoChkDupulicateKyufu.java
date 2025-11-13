@@ -11,7 +11,6 @@ public class IryoChkDupulicateKyufu extends GojoAbstractLogicBase {
 
         return chkDupulicateKyufu();
     }
-
     private EventResultDto chkDupulicateKyufu() {
 
 

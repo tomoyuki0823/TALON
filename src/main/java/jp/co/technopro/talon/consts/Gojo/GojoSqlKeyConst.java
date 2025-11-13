@@ -23,4 +23,7 @@ public final class GojoSqlKeyConst {
     /** 預託金更新処理（TK_YOTAKUのUPDATE） */
     public static final String SQL_TK_SHIHARAI = "TK_SHIHARAI";
 
+    /** 長寿祝金検索を行うクエリ */
+    public static final String SQL_KEY_SEARCH_IWAI_KIN = "SEARCH_IWAI_KIN";
+
 }

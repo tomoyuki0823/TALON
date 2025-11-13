@@ -59,9 +59,7 @@ public class HenkoInitLogic extends AbstractLogicBase {
         if (isCntHenko2(conn, tkNo, shoriTuki, paramDto)) {
             return EventResultDto.ok();
         }
-
         // 処理月セットして履歴登録
-
 
         try {
             conn.setAutoCommit(false);
@@ -76,4 +74,5 @@ public class HenkoInitLogic extends AbstractLogicBase {
 
         return EventResultDto.ok();
     }
+
 }

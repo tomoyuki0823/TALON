@@ -35,15 +35,15 @@ public final class GojoMessagesConst {
      * TODO そもそも、以下って長寿祝金限定？
      * 限定ではないと思うので、JavaDocの修正を行ってください。
      */
-    /** 長寿祝い金で検索時にNULLチェック **/
+    /** 検索時にNULLチェック **/
     public static final String MSG_ERROR_EMPTY = "文字列が空です";
 
-    /** 長寿祝い金で検索時に文字列チェック **/
+    /** 検索時に文字列チェック **/
     public static final String MSG_ERROR_INVALID = "は有効な年月ではありません";
 
-    /** 長寿祝い金でクエリの実行に失敗したとき **/
+    /** クエリの実行に失敗したとき **/
     public static final String MSG_ERROR_FAILED = "クエリの実行に失敗しました。\n";
 
-    /** 長寿祝い金で既に処理済みの時 **/
+    /** 既に処理済みの時 **/
     public static final String MSG_OK_ALREADY = "既に保存されているため、処理を中止します";
 }

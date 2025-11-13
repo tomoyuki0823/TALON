@@ -309,19 +309,37 @@ public class DbUtil {
      * @throws SQLException バインド時のエラー
      */
     private static void setParams(PreparedStatement ps, Object... params) throws SQLException {
-        if (params == null || params.length == 0) return;
-
-        int expectedCount = ps.getParameterMetaData().getParameterCount();
-        if (params.length != expectedCount) {
-            throw new SQLException("プレースホルダ（?）の数とバインドするパラメータ数が一致していません。"
-                    + " expected=" + expectedCount + ", actual=" + params.length);
-        }
-
+        if (params == null) return;
         for (int i = 0; i < params.length; i++) {
+            int idx = i + 1;
+            Object v = params[i];
 
-            Object param = params[i];
-            System.out.println("  -> param[" + (i + 1) + "] = " + param + " (" + (param != null ? param.getClass().getSimpleName() : "null") + ")");
-            ps.setObject(i + 1, params[i]);
+            if (v == null) {
+                ps.setNull(idx, java.sql.Types.NVARCHAR);
+                continue;
+            }
+            if (v instanceof String) {
+                ps.setNString(idx, (String) v);
+            } else if (v instanceof Integer) {
+                ps.setInt(idx, (Integer) v);
+            } else if (v instanceof Long) {
+                ps.setLong(idx, (Long) v);
+            } else if (v instanceof java.math.BigDecimal) {
+                ps.setBigDecimal(idx, (java.math.BigDecimal) v);
+            } else if (v instanceof java.sql.Date) {
+                ps.setDate(idx, (java.sql.Date) v);
+            } else if (v instanceof java.sql.Timestamp) {
+                ps.setTimestamp(idx, (java.sql.Timestamp) v);
+            } else if (v instanceof java.time.LocalDate) {
+                ps.setDate(idx, java.sql.Date.valueOf((java.time.LocalDate) v));
+            } else if (v instanceof java.time.LocalDateTime) {
+                ps.setTimestamp(idx, java.sql.Timestamp.valueOf((java.time.LocalDateTime) v));
+            } else if (v instanceof byte[]) {
+                ps.setBytes(idx, (byte[]) v);
+            } else {
+                // 既定は NVARCHAR に寄せる（MSSQLで無難）
+                ps.setObject(idx, v, java.sql.Types.NVARCHAR);
+            }
         }
     }
 
